@@ -1,6 +1,16 @@
+// httpService.ts
 import { localStorageKeys } from "../utils/localStorageKeys";
 
-const baseURL = import.meta.env.VITE_API_BASE_URL;
+// Lee VITE_API_URL (prod) y cae a VITE_API_BASE_URL (legacy)
+const RAW = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
+// Quita barra final
+const BASE = RAW.replace(/\/+$/, "");
+
+// Construye URL: agrega una sola barra y limpia la inicial de `path`
+function u(path: string): string {
+  const clean = String(path ?? "").replace(/^\/+/, "");
+  return BASE ? `${BASE}/${clean}` : `/${clean}`; // si BASE vacío, usa relativo
+}
 
 function getToken(): string | null {
   return localStorage.getItem(localStorageKeys.token);
@@ -24,7 +34,7 @@ function baseConfig(json: boolean): RequestInit {
   return {
     mode: "cors",
     cache: "no-cache",
-    credentials: "same-origin",
+    credentials: "same-origin", // usamos JWT en localStorage, no cookies
     headers: buildHeaders(json),
   };
 }
@@ -38,7 +48,7 @@ function handle401(res: Response) {
 }
 
 export async function _get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(`${baseURL}${path}`, {
+  const response = await fetch(u(path), {
     ...baseConfig(true),
     method: "GET",
     signal,
@@ -48,11 +58,8 @@ export async function _get<T>(path: string, signal?: AbortSignal): Promise<T> {
   return (await response.json()) as T;
 }
 
-export async function __getFiles(
-  path: string,
-  signal?: AbortSignal
-): Promise<Blob> {
-  const response = await fetch(`${baseURL}${path}`, {
+export async function __getFiles(path: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch(u(path), {
     ...baseConfig(false),
     method: "GET",
     signal,
@@ -62,12 +69,8 @@ export async function __getFiles(
   return await response.blob();
 }
 
-export async function _post<T, P = any>(
-  path: string,
-  payload?: P,
-  signal?: AbortSignal
-): Promise<T> {
-  const response = await fetch(`${baseURL}${path}`, {
+export async function _post<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(u(path), {
     ...baseConfig(true),
     method: "POST",
     signal,
@@ -78,14 +81,10 @@ export async function _post<T, P = any>(
   return (await response.json()) as T;
 }
 
-export async function _postFiles<T = any>(
-  formFile: File | Blob,
-  path: string,
-  signal?: AbortSignal
-): Promise<T> {
+export async function _postFiles<T = any>(formFile: File | Blob, path: string, signal?: AbortSignal): Promise<T> {
   const formData = new FormData();
   formData.append("file", formFile);
-  const response = await fetch(`${baseURL}${path}`, {
+  const response = await fetch(u(path), {
     ...baseConfig(false),
     method: "POST",
     signal,
