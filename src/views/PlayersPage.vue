@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
 import { localStorageKeys } from '../utils/localStorageKeys'
+import { useRouter } from 'vue-router'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
 import * as playersApi from '../lib/players.service'
 import { usePlayers } from '../stores/players'
 import { useGroups } from '../stores/groups'
 
 const players = usePlayers()
+const router = useRouter()
 const groups = useGroups()
 
 const name = ref('')
@@ -147,7 +149,8 @@ async function removePlayer(id: string) {
 
     <!-- listado (muestra badges con los scores) -->
     <TransitionGroup name="player" tag="ul" class="grid md:grid-cols-2 gap-4" appear>
-  <li v-for="p in players.items" :key="p._id" class="relative bg-white p-4 rounded-xl shadow border space-y-2 overflow-hidden">
+  <li v-for="p in players.items" :key="p._id" class="relative bg-white p-4 rounded-xl shadow border space-y-2 overflow-hidden cursor-pointer hover:shadow-md transition"
+      @click="(e:any)=>{ if(e.target.closest('button')) return; router.push({ name: 'player-detail', params: { id: p._id } }) }">
         <button
           type="button"
             @click="removePlayer(p._id)"

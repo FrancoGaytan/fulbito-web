@@ -76,7 +76,16 @@ export async function _get<T>(path: string, signal?: AbortSignal): Promise<T> {
     signal,
   });
   if (response.status === 401) handle401(response);
-  if (!response.ok) throw new Error("GET/POST/PUT/DELETE request failed");
+  if (!response.ok) {
+    try {
+      const data = await parseJsonSafe(response);
+      const msg = data?.message || `GET ${path} failed (${response.status})`;
+      throw buildError(response, msg);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error(`GET ${path} failed (${response.status})`);
+    }
+  }
   return (await response.json()) as T;
 }
 
@@ -167,6 +176,21 @@ export async function _put<T, P = any>(path: string, payload?: P, signal?: Abort
   if (!response.ok) {
     const data = await parseJsonSafe(response);
     throw buildError(response, data?.message || "PUT request failed");
+  }
+  return (await response.json()) as T;
+}
+
+export async function _patch<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(u(path), {
+    ...baseConfig(true),
+    method: "PATCH",
+    signal,
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+  if (response.status === 401) handle401(response);
+  if (!response.ok) {
+    const data = await parseJsonSafe(response);
+    throw buildError(response, data?.message || "PATCH request failed");
   }
   return (await response.json()) as T;
 }
