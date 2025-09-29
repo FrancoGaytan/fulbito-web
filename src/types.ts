@@ -29,6 +29,7 @@ export interface Player {
   rating?: number;
   nickname?: string;
   gamesPlayed?: number; // número de partidos finalizados jugados
+  userId?: UUID; // usuario que reclamó este player (multi-user)
   createdAt?: string;
   updatedAt?: string;
 }

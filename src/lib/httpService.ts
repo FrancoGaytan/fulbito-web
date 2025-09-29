@@ -9,7 +9,16 @@ const BASE = RAW.replace(/\/+$/, "");
 
 // Construye URL: agrega una sola barra y limpia la inicial de `path`
 function u(path: string): string {
-  const clean = String(path ?? "").replace(/^\/+/, "");
+  let clean = String(path ?? "").replace(/^\/+/, "");
+  // Evita doble /api cuando BASE ya termina en /api y la ruta también empieza con api/
+  if (/\/api$/i.test(BASE) && /^api\//i.test(clean)) {
+    // console.warn sólo en dev para ayudar a detectar mala config
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.warn('[httpService] Normalizando ruta para evitar /api/api: BASE=%s path=%s', BASE, path);
+    }
+    clean = clean.substring(4); // quita 'api/'
+  }
   return BASE ? `${BASE}/${clean}` : `/${clean}`; // si BASE vacío, usa relativo
 }
 
@@ -31,6 +40,13 @@ function buildHeaders(json: boolean) {
   } as Record<string, string>;
 }
 
+// Variante sin Authorization (para login / register)
+function buildHeadersNoAuth(json: boolean) {
+  return {
+    ...(json ? { "Content-Type": "application/json" } : {}),
+  } as Record<string, string>;
+}
+
 function baseConfig(json: boolean): RequestInit {
   return {
     mode: "cors",
@@ -42,8 +58,13 @@ function baseConfig(json: boolean): RequestInit {
 
 function handle401(res: Response) {
   if (res.status === 401) {
+    // Limpiamos token inválido
     localStorage.removeItem(localStorageKeys.token);
-    if (location.pathname !== "/login") location.href = "/login";
+    // Evitar redirecciones mientras el usuario está en pantallas públicas de auth
+    const PUBLIC_AUTH_PATHS = ["/login", "/register"];
+    if (!PUBLIC_AUTH_PATHS.includes(location.pathname)) {
+      location.href = "/login";
+    }
     throw new Error("Unauthorized");
   }
 }
@@ -78,7 +99,46 @@ export async function _post<T, P = any>(path: string, payload?: P, signal?: Abor
     body: payload ? JSON.stringify(payload) : undefined,
   });
   if (response.status === 401) handle401(response);
-  if (!response.ok) throw new Error("POST request failed");
+  if (!response.ok) {
+    // Intentamos extraer mensaje del backend
+    try {
+      const data = await parseJsonSafe(response);
+      const msg = data?.message || `POST ${path} failed (${response.status})`;
+      throw buildError(response, msg);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error(`POST ${path} failed (${response.status})`);
+    }
+  }
+  return (await response.json()) as T;
+}
+
+export async function _postNoAuth<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(u(path), {
+    mode: "cors",
+    cache: "no-cache",
+    credentials: "same-origin",
+    headers: buildHeadersNoAuth(true),
+    method: "POST",
+    signal,
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+  // Para no-auth, si devuelve 401 NO redirigimos automáticamente; sólo lanzamos error
+  if (response.status === 401) {
+    const data = await parseJsonSafe(response);
+    const msg = data?.message || `POST ${path} unauthorized`;
+    throw buildError(response, msg);
+  }
+  if (!response.ok) {
+    try {
+      const data = await parseJsonSafe(response);
+      const msg = data?.message || `POST ${path} failed (${response.status})`;
+      throw buildError(response, msg);
+    } catch (e) {
+      if (e instanceof Error) throw e;
+      throw new Error(`POST ${path} failed (${response.status})`);
+    }
+  }
   return (await response.json()) as T;
 }
 

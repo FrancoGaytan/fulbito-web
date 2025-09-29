@@ -25,6 +25,7 @@ async function submit() {
         {{ auth.loading ? 'Ingresando…' : 'Entrar' }}
       </button>
       <p v-if="auth.error" class="text-red-600 text-sm">{{ auth.error }}</p>
+      <p class="text-xs text-center text-gray-600">¿No tenés cuenta? <router-link to="/register" class="underline">Registrate</router-link></p>
     </form>
   </div>
 </template>

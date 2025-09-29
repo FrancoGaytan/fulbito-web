@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { localStorageKeys } from '../utils/localStorageKeys'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
 import * as playersApi from '../lib/players.service'
 import { usePlayers } from '../stores/players'
@@ -41,7 +42,49 @@ async function createPlayer() {
   abilityKeys.forEach(k => (abilityScores[k] = 0))
 }
 
-onMounted(() => { players.fetch(); groups.fetch() })
+const allPlayers = ref(players.items)
+onMounted(async () => {
+  await groups.fetch()
+  // usamos listado global para claim
+  allPlayers.value = await playersApi.listAllPlayers()
+  players.items = allPlayers.value // mantiene compatibilidad con UI existente
+})
+
+// userId del JWT (simple decode base64 sin validar). Si el token cambia o estructura distinta, mejorar.
+const currentUserId = computed(() => {
+  try {
+    const token = localStorage.getItem(localStorageKeys.token)
+    if (!token) return ''
+    const payload = JSON.parse(atob(token.split('.')[1] || ''))
+    return payload.sub || payload.userId || payload.id || ''
+  } catch { return '' }
+})
+
+// Jugador actualmente reclamado por este usuario (si existe)
+const myClaimedPlayerId = computed(() => players.items.find(p => p.userId && p.userId === currentUserId.value)?._id || '')
+
+
+async function claim(p: any) {
+  if (p.userId) return
+  try {
+    const updated = await playersApi.claimPlayer(p._id)
+    // actualizar en memoria
+    const idx = players.items.findIndex(x => x._id === p._id)
+    if (idx >= 0) players.items[idx] = updated
+  } catch (e: any) {
+    alert(e?.message || 'No se pudo reclamar el jugador')
+  }
+}
+
+async function unclaim(p: any) {
+  try {
+    const updated = await playersApi.unclaimPlayer(p._id)
+    const idx = players.items.findIndex(x => x._id === p._id)
+    if (idx >= 0) players.items[idx] = updated
+  } catch (e: any) {
+    alert(e?.message || 'No se pudo desvincular el jugador')
+  }
+}
 
 async function removePlayer(id: string) {
   try {
@@ -104,7 +147,7 @@ async function removePlayer(id: string) {
 
     <!-- listado (muestra badges con los scores) -->
     <TransitionGroup name="player" tag="ul" class="grid md:grid-cols-2 gap-4" appear>
-      <li v-for="p in players.items" :key="p._id" class="relative bg-white p-4 rounded-xl shadow border space-y-2 overflow-hidden">
+  <li v-for="p in players.items" :key="p._id" class="relative bg-white p-4 rounded-xl shadow border space-y-2 overflow-hidden">
         <button
           type="button"
             @click="removePlayer(p._id)"
@@ -117,6 +160,20 @@ async function removePlayer(id: string) {
         <div class="font-medium pr-8 flex items-center gap-2">
           <span>{{ p.name }}</span>
           <span v-if="(p.gamesPlayed ?? 0) === 0" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">Nuevo</span>
+          <template v-if="p.userId && p.userId === currentUserId">
+            <span class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Mi perfil</span>
+            <button
+              type="button"
+              @click="unclaim(p)"
+              class="text-[10px] uppercase tracking-wide bg-red-600 text-white px-2 py-0.5 rounded hover:bg-red-500"
+            >Desvincular</button>
+          </template>
+          <span v-else-if="p.userId" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Asignado</span>
+          <button
+            v-else-if="!myClaimedPlayerId"
+            @click="claim(p)"
+            class="text-[10px] uppercase tracking-wide bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-500"
+          >Assign to me</button>
         </div>
         <div class="text-sm text-gray-500" v-if="p.nickname">@{{ p.nickname }}</div>
         <div v-if="p.gamesPlayed !== undefined" class="text-xs text-gray-500">

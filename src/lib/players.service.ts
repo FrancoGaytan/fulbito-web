@@ -5,6 +5,10 @@ import type { Player } from '../types';
 export const listPlayers = (signal?: AbortSignal) =>
   _get<Player[]>('/players', signal)
 
+// lista global de todos los players (para reclamar)
+export const listAllPlayers = (signal?: AbortSignal) =>
+  _get<Player[]>('/api/players/all', signal)
+
 export const createPlayer = (
   name: string,
   nickname: string | undefined,
@@ -23,3 +27,9 @@ export const updateAbilities = (playerId: string, abilities: string[], signal?: 
 
 export const deletePlayer = (id: string) =>
   _del<{ message: string }>(`/players/${id}`);
+
+export const claimPlayer = (id: string) =>
+  _post<Player>(`/api/players/${id}/claim`);
+
+export const unclaimPlayer = (id: string) =>
+  _post<Player>(`/api/players/${id}/unclaim`);
