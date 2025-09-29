@@ -173,7 +173,7 @@ async function removePlayer(id: string) {
             v-else-if="!myClaimedPlayerId"
             @click="claim(p)"
             class="text-[10px] uppercase tracking-wide bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-500"
-          >Assign to me</button>
+          >Vincularme</button>
         </div>
         <div class="text-sm text-gray-500" v-if="p.nickname">@{{ p.nickname }}</div>
         <div v-if="p.gamesPlayed !== undefined" class="text-xs text-gray-500">
