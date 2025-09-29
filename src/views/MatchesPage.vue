@@ -26,6 +26,8 @@ const selectedGroup = ref<UUID | "">("");
 const selectedPlayers = ref<UUID[]>([]);
 const when = ref<string>(nowLocalForInput());
 const items = ref<Match[]>([]);
+// IDs de partidos recién creados para highlight temporal
+const highlights = ref<Record<string, boolean>>({});
 
 /** IDs de miembros del grupo (tolera members | players) */
 const groupMemberIds = computed<string[]>(() => {
@@ -74,6 +76,9 @@ async function createMatch() {
   );
 
   items.value.unshift(m);
+  // highlight verde 1 segundo
+  highlights.value[m._id] = true;
+  setTimeout(() => { delete highlights.value[m._id]; }, 600);
   selectedPlayers.value = [];
 }
 
@@ -153,7 +158,11 @@ async function removeMatch(id: UUID) {
       <div
         v-for="m in items"
         :key="m._id"
-        :class="['p-4 rounded-xl border shadow-sm transition-colors', m.status === 'finalized' ? 'bg-gray-200' : 'bg-white']"
+        :class="[
+          'p-4 rounded-xl border shadow-sm transition-colors duration-700',
+          m.status === 'finalized' ? 'bg-gray-200' : 'bg-white',
+          highlights[m._id] && 'bg-green-100 ring-1 ring-green-300'
+        ]"
       >
         <div class="flex items-center justify-between">
           <div class="text-sm opacity-60">
