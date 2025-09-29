@@ -28,6 +28,7 @@ export interface Player {
   abilities?: Partial<Record<AbilityKey, number>>;
   rating?: number;
   nickname?: string;
+  gamesPlayed?: number; // número de partidos finalizados jugados
   createdAt?: string;
   updatedAt?: string;
 }
@@ -69,6 +70,10 @@ export interface Match {
   createdAt?: string;
   updatedAt?: string;
   result?: MatchResult;
+  // Nuevos campos feature ratings/feedback
+  feedback?: PlayerFeedback[];
+  ratingApplied?: boolean;
+  ratingChanges?: RatingChange[];
 }
 
 // Health
@@ -90,4 +95,11 @@ export interface MatchResult {
   scoreA: number;
   scoreB: number;
   finalizedAt?: string;
+}
+
+export interface RatingChange {
+  playerId: UUID;
+  before: number;
+  after: number;
+  delta: number;
 }

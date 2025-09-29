@@ -3,7 +3,7 @@ import { onMounted, ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import * as matchesApi from "../lib/matches.service";
 import { usePlayers } from "../stores/players";
-import type { UUID, Match } from "../types";
+import type { UUID, Match, RatingChange } from "../types";
 
 const route = useRoute();
 const id = route.params.id as UUID;
@@ -12,6 +12,10 @@ const groupId = (route.query.group as string) || "";
 const players = usePlayers();
 const current = ref<Match | null>(null); // match actual
 const loadingGen = ref(false);
+const applyingRatings = ref(false);
+const localChanges = ref<RatingChange[]>([]);
+// votos hechos en esta sesión (para ocultar jugador tras votar)
+const voted = ref<Record<string, true>>({});
 
 onMounted(async () => {
   // necesitamos nombres para mapear ids -> nombres
@@ -27,6 +31,8 @@ const isFinalized = computed(() => {
   return !!current.value?.result || current.value?.status === "finalized";
 });
 
+const ratingApplied = computed(() => !!current.value?.ratingApplied);
+
 const finalScore = computed(() => {
   const r = (current.value as any)?.result;
   const a = r?.scoreA ?? current.value?.teams?.[0]?.score ?? 0;
@@ -41,12 +47,15 @@ const finalizedAt = computed(() => {
 
 async function finish() {
   if (!current.value) return;
+  if (isFinalized.value) return; // evita doble finalize
+  if (!hasTeams.value) return; // no se puede finalizar sin equipos
   const updated = await matchesApi.finalize(
     current.value._id,
     scoreA.value,
     scoreB.value
   );
   current.value = updated;
+  try { await players.fetch(); } catch (e) { console.warn('No se pudo refrescar jugadores', e); }
 }
 
 /** Diccionario id->nombre para usar en los listados */
@@ -83,6 +92,15 @@ const teamB = computed(() => {
   return ids.map((id) => ({ id, name: nameById.value[id] || id }));
 });
 
+// Jugadores a calificar: union de A y B (solo cuando finalizado y no aplicado)
+const playersForRating = computed(() => {
+  if (!isFinalized.value || ratingApplied.value) return [] as { id: string; name: string }[];
+  const merged: Record<string, { id: string; name: string }> = {};
+  for (const p of teamA.value) merged[p.id] = p;
+  for (const p of teamB.value) merged[p.id] = p;
+  return Object.values(merged).filter((p) => !voted.value[p.id]);
+});
+
 /** Armar equipos */
 async function autoTeams() {
   if (!current.value) return
@@ -101,6 +119,33 @@ async function autoTeams() {
 /** Finalizar (mantengo tu lógica) */
 const scoreA = ref<number>(0);
 const scoreB = ref<number>(0);
+
+async function votePlayer(playerId: UUID, vote: 'up' | 'neutral' | 'down') {
+  if (!current.value) return;
+  try {
+    await matchesApi.sendFeedback(current.value._id, { playerId, vote });
+    voted.value[playerId] = true;
+  } catch (e) {
+    console.error(e);
+    alert('No se pudo enviar el feedback');
+  }
+}
+
+async function applyRatingsNow() {
+  if (!current.value) return;
+  applyingRatings.value = true;
+  try {
+    const res = await matchesApi.applyRatings(current.value._id);
+    current.value.ratingApplied = true as any;
+    current.value.ratingChanges = res.changes as any;
+    localChanges.value = res.changes;
+  } catch (e: any) {
+    console.error(e);
+    alert(e?.message || 'No se pudieron aplicar los ratings');
+  } finally {
+    applyingRatings.value = false;
+  }
+}
 </script>
 
 <template>
@@ -189,11 +234,66 @@ const scoreB = ref<number>(0);
           />
           <button
             @click="finish"
-            class="ml-3 px-4 py-2 rounded bg-black text-white"
+            class="ml-3 px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+            :disabled="isFinalized || !hasTeams"
           >
             Finalizar
           </button>
         </div>
+        <p v-if="!hasTeams" class="mt-2 text-xs text-red-600">Primero generá los equipos para poder finalizar.</p>
+      </template>
+    </div>
+
+    <!-- ─────── Feedback / Calificación Jugadores ─────── -->
+    <div v-if="isFinalized" class="bg-white p-4 rounded-xl shadow border space-y-4">
+      <template v-if="!ratingApplied">
+        <h2 class="font-medium flex items-center gap-2">Calificar jugadores
+          <span class="text-xs font-normal text-gray-500" v-if="playersForRating.length">({{ playersForRating.length }} pendientes)</span>
+        </h2>
+        <p v-if="playersForRating.length === 0" class="text-sm text-gray-500">
+          Todos calificados. Ahora podés aplicar los ratings.
+        </p>
+        <ul v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <li v-for="p in playersForRating" :key="p.id" class="flex items-center justify-between gap-2 border rounded px-3 py-2">
+            <span class="truncate">{{ p.name }}</span>
+            <div class="flex items-center gap-1">
+              <button @click="votePlayer(p.id as UUID, 'down')" class="w-8 h-8 flex items-center justify-center rounded bg-red-100 text-red-600 hover:bg-red-200" title="Mal desempeño">👎</button>
+              <button @click="votePlayer(p.id as UUID, 'neutral')" class="w-8 h-8 flex items-center justify-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200" title="Neutral">😐</button>
+              <button @click="votePlayer(p.id as UUID, 'up')" class="w-8 h-8 flex items-center justify-center rounded bg-green-100 text-green-600 hover:bg-green-200" title="Buen desempeño">👍</button>
+            </div>
+          </li>
+        </ul>
+        <div class="pt-2 border-t">
+          <button
+            @click="applyRatingsNow"
+            :disabled="playersForRating.length > 0 || applyingRatings"
+            class="px-4 py-2 rounded bg-black text-white disabled:opacity-40"
+          >
+            {{ applyingRatings ? 'Aplicando…' : 'Aplicar ratings' }}
+          </button>
+        </div>
+      </template>
+      <template v-else>
+        <h2 class="font-medium">Cambios de rating</h2>
+        <p class="text-sm text-gray-500" v-if="(current?.ratingChanges?.length || 0) === 0">Sin cambios registrados.</p>
+        <table v-else class="w-full text-sm border-t">
+          <thead>
+            <tr class="text-left">
+              <th class="py-2 pr-2">Jugador</th>
+              <th class="py-2 pr-2">Antes</th>
+              <th class="py-2 pr-2">Después</th>
+              <th class="py-2 pr-2">Δ</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="c in (current?.ratingChanges || localChanges)" :key="c.playerId" class="border-t">
+              <td class="py-1 pr-2">{{ nameById[c.playerId] || c.playerId }}</td>
+              <td class="py-1 pr-2">{{ c.before }}</td>
+              <td class="py-1 pr-2">{{ c.after }}</td>
+              <td class="py-1 pr-2 font-medium" :class="c.delta>0 ? 'text-green-600' : c.delta<0 ? 'text-red-600' : 'text-gray-500'">{{ c.delta>0? '+'+c.delta : c.delta }}</td>
+            </tr>
+          </tbody>
+        </table>
       </template>
     </div>
   </div>

@@ -1,4 +1,4 @@
-import { _get, _post } from '../lib/httpService';
+import { _del, _get, _post } from '../lib/httpService';
 import type { Group } from '../types';
 
 export const listGroups = () => _get<Group[]>('/groups')
@@ -13,3 +13,5 @@ export const joinGroup = (groupId: string) => _post(`/groups/${groupId}/join`)
 
 export const addPlayersToGroup = (groupId: string, playerIds: string[]) =>
   _post<Group>(`/groups/${groupId}/players`, { playerIds })
+
+export const deleteGroup = (id: string) => _del<{ message: string }>(`/groups/${id}`);

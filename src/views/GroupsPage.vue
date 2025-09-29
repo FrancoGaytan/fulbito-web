@@ -28,10 +28,9 @@ async function createNewGroup() {
   creating.value = true;
   try {
     const g = await groupsApi.createGroup(name, gDesc.value);
-    // normalizo members/players
     const normalized = { ...g, members: memberIdsFromAny(g) } as any;
     groups.items.unshift(normalized);
-    // reset, dejo abierto el panel de ese grupo para sumar players
+
     gName.value = "";
     gDesc.value = "";
     openPanel(normalized._id);
@@ -86,6 +85,17 @@ async function addSelected() {
   selected.value = [];
   search.value = "";
 }
+
+async function removeGroup(id: UUID) {
+  try {
+    await groupsApi.deleteGroup(id);
+    groups.items = groups.items.filter((g) => g._id !== id);
+    if (panelFor.value === id) panelFor.value = "";
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo eliminar el grupo");
+  }
+}
 </script>
 
 <template>
@@ -116,11 +126,16 @@ async function addSelected() {
   </div>
 
   <!-- Grupos + panel agregar jugadores -->
-  <div class="grid md:grid-cols-2 gap-4">
+  <TransitionGroup
+    name="group"
+    tag="div"
+    class="grid md:grid-cols-2 gap-4"
+    appear
+  >
     <div
       v-for="g in groups.items"
       :key="g._id"
-      class="bg-white border rounded-xl p-4 space-y-3"
+      class="bg-white border rounded-xl p-4 space-y-3 shadow-sm"
     >
       <div class="flex items-center gap-3">
         <h2 class="font-medium text-lg">{{ g.name }}</h2>
@@ -139,12 +154,20 @@ async function addSelected() {
         </span>
       </div>
 
-      <div class="flex gap-2">
+      <div class="flex gap-2 justify-between">
         <button
           class="px-3 py-1.5 rounded bg-black text-white"
           @click="openPanel(g._id)"
         >
           Agregar jugadores
+        </button>
+        <button
+          type="button"
+          @click="removeGroup(g._id as UUID)"
+          class="ml-2 px-3 py-1 text-s rounded bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
+          title="Eliminar grupo"
+        >
+          Eliminar
         </button>
       </div>
 
@@ -190,5 +213,26 @@ async function addSelected() {
         </div>
       </div>
     </div>
-  </div>
+  </TransitionGroup>
 </template>
+
+<style scoped>
+.group-enter-from {
+  opacity: 0;
+  transform: scale(0.95) translateY(8px);
+}
+.group-enter-active {
+  transition: all 230ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.group-leave-active {
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.group-leave-to {
+  opacity: 0;
+  transform: scale(0.92) translateX(-20px);
+}
+.group-move {
+  transition: transform 260ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+</style>

@@ -1,5 +1,6 @@
 // httpService.ts
 import { localStorageKeys } from "../utils/localStorageKeys";
+import { buildError, parseJsonSafe } from "../utils/serviceUtils";
 
 // Lee VITE_API_URL (prod) y cae a VITE_API_BASE_URL (legacy)
 const RAW = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
@@ -93,4 +94,37 @@ export async function _postFiles<T = any>(formFile: File | Blob, path: string, s
   if (response.status === 401) handle401(response);
   if (!response.ok) throw new Error("POST Files request failed");
   return (await response.json()) as T;
+}
+
+export async function _put<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(u(path), {
+    ...baseConfig(true),
+    method: "PUT",
+    signal,
+    body: payload ? JSON.stringify(payload) : undefined,
+  });
+  if (response.status === 401) handle401(response);
+  if (!response.ok) {
+    const data = await parseJsonSafe(response);
+    throw buildError(response, data?.message || "PUT request failed");
+  }
+  return (await response.json()) as T;
+}
+
+export async function _del<T = void>(path: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetch(u(path), {
+    ...baseConfig(true),
+    method: "DELETE",
+    signal,
+  });
+  if (response.status === 401) handle401(response);
+  if (!response.ok) {
+    const data = await parseJsonSafe(response);
+    throw buildError(response, data?.message || "DELETE request failed");
+  }
+  // si el backend devuelve 200 con JSON { message: ... }
+  if (response.status === 204) return undefined as T;
+  const ct = response.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return (await response.json()) as T;
+  return undefined as T;
 }

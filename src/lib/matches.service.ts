@@ -1,5 +1,5 @@
-import { _get, _post } from "../lib/httpService";
-import type { Match, Teams, UUID, PlayerFeedback, GenerateTeamsResponse } from "../types";
+import { _del, _get, _post } from "../lib/httpService";
+import type { Match, UUID, PlayerFeedback, GenerateTeamsResponse, RatingChange } from "../types";
 
 export const listByGroup = (groupId: UUID, signal?: AbortSignal) =>
   _get<Match[]>(`/matches/group/${groupId}`, signal);
@@ -15,6 +15,9 @@ export async function create(
   }
   return _post<Match>('/matches', body);
 }
+
+export const deleteMatch = (id: UUID, signal?: AbortSignal) =>
+  _del<{ message: string }>(`/matches/${id}`, signal);
 
 export const addParticipant = (
   id: UUID,
@@ -41,3 +44,6 @@ export const sendFeedback = (
 
 export const finalize = (id: UUID, scoreA: number, scoreB: number) =>
   _post<Match>(`/matches/${id}/finalize`, { scoreA, scoreB });
+
+export const applyRatings = (id: UUID) =>
+  _post<{ applied: number; changes: RatingChange[] }>(`/matches/${id}/apply-ratings`);

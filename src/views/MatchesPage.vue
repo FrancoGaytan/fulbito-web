@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
-import * as matchesApi from "../lib/matches.service";
+import { listByGroup as apiListByGroup, create as apiCreateMatch, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
 import type { UUID, Match } from "../types";
 
 const groups = useGroups();
@@ -51,7 +51,7 @@ watch(selectedGroup, async (gid) => {
 
   items.value = [];
   if (gid) {
-    const list = await matchesApi.listByGroup(gid as UUID);
+  const list = await apiListByGroup(gid as UUID);
     // opcional: orden por fecha programada (o createdAt)
     items.value = [...list].sort((a, b) => {
       const da = new Date((a.scheduledAt ?? (a as any).createdAt) || 0).getTime();
@@ -67,7 +67,7 @@ async function createMatch() {
   // el backend espera scheduledAt (ISO). Convertimos el valor local a ISO.
   const scheduledAt = when.value ? new Date(when.value).toISOString() : undefined;
 
-  const m = await matchesApi.create(
+  const m = await apiCreateMatch(
     selectedGroup.value as UUID,
     selectedPlayers.value,
     scheduledAt
@@ -82,6 +82,16 @@ function viewDate(m: Match) {
   const d: string | undefined =
     m.scheduledAt ?? (m as any).date ?? (m as any).createdAt;
   return d ? new Date(d).toLocaleString() : "Sin fecha";
+}
+
+async function removeMatch(id: UUID) {
+  try {
+  await apiDeleteMatch(id);
+    items.value = items.value.filter((m) => m._id !== id);
+  } catch (e) {
+    console.error(e);
+    alert("No se pudo eliminar el partido");
+  }
 }
 </script>
 
@@ -133,19 +143,47 @@ function viewDate(m: Match) {
       </p>
     </div>
 
-    <!-- Listado de partidos -->
-    <div v-for="m in items" :key="m._id" class="bg-white p-4 rounded-xl border">
-      <div class="flex items-center justify-between">
-        <div class="text-sm opacity-60">
-          {{ viewDate(m) }}
+    <!-- Listado de partidos con transición -->
+    <TransitionGroup
+      name="match"
+      tag="div"
+      class="space-y-3"
+      appear
+    >
+      <div
+        v-for="m in items"
+        :key="m._id"
+        :class="['p-4 rounded-xl border shadow-sm transition-colors', m.status === 'finalized' ? 'bg-gray-200' : 'bg-white']"
+      >
+        <div class="flex items-center justify-between">
+          <div class="text-sm opacity-60">
+            {{ viewDate(m) }}
+          </div>
+          <div class="flex items-center gap-2">
+            <button
+              type="button"
+              @click="removeMatch(m._id as UUID)"
+              class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
+            >
+              Eliminar
+            </button>
+            <router-link
+              :to="`/match/${m._id}?group=${selectedGroup}`"
+              class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-gray-800 text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400/50 transition-colors"
+            >
+              Abrir
+            </router-link>
+          </div>
         </div>
-        <router-link
-          :to="`/match/${m._id}?group=${selectedGroup}`"
-          class="text-blue-600"
-        >
-          Abrir
-        </router-link>
       </div>
-    </div>
+    </TransitionGroup>
   </div>
 </template>
+
+<style scoped>
+.match-enter-from { opacity: 0; transform: translateY(8px) scale(.96); }
+.match-enter-active { transition: all 220ms cubic-bezier(.4,0,.2,1); }
+.match-leave-active { transition: all 200ms cubic-bezier(.4,0,.2,1); position: relative; }
+.match-leave-to { opacity: 0; transform: translateX(-24px) scale(.94); }
+.match-move { transition: transform 260ms cubic-bezier(.4,0,.2,1); }
+</style>

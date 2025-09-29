@@ -42,6 +42,16 @@ async function createPlayer() {
 }
 
 onMounted(() => { players.fetch(); groups.fetch() })
+
+async function removePlayer(id: string) {
+  try {
+    await playersApi.deletePlayer(id)
+    players.items = players.items.filter(p => p._id !== id)
+  } catch (e) {
+    console.error(e)
+    alert('No se pudo eliminar el jugador')
+  }
+}
 </script>
 
 <template>
@@ -93,10 +103,25 @@ onMounted(() => { players.fetch(); groups.fetch() })
 </div>
 
     <!-- listado (muestra badges con los scores) -->
-    <ul class="grid md:grid-cols-2 gap-4">
-      <li v-for="p in players.items" :key="p._id" class="bg-white p-4 rounded-xl shadow border space-y-2">
-        <div class="font-medium">{{ p.name }}</div>
+    <TransitionGroup name="player" tag="ul" class="grid md:grid-cols-2 gap-4" appear>
+      <li v-for="p in players.items" :key="p._id" class="relative bg-white p-4 rounded-xl shadow border space-y-2 overflow-hidden">
+        <button
+          type="button"
+            @click="removePlayer(p._id)"
+            class="absolute top-2 right-2 w-7 h-7 inline-flex items-center justify-center rounded-md bg-black text-white text-xs hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
+            title="Eliminar jugador"
+        >
+          <!-- ícono simple X -->
+          <span class="-mt-px">✕</span>
+        </button>
+        <div class="font-medium pr-8 flex items-center gap-2">
+          <span>{{ p.name }}</span>
+          <span v-if="(p.gamesPlayed ?? 0) === 0" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">Nuevo</span>
+        </div>
         <div class="text-sm text-gray-500" v-if="p.nickname">@{{ p.nickname }}</div>
+        <div v-if="p.gamesPlayed !== undefined" class="text-xs text-gray-500">
+          Partidos jugados: <span class="font-medium">{{ p.gamesPlayed }}</span>
+        </div>
         <div class="flex flex-wrap gap-1">
           <span
             v-for="([k, v]) in Object.entries(p.abilities || {})"
@@ -107,7 +132,15 @@ onMounted(() => { players.fetch(); groups.fetch() })
           </span>
         </div>
       </li>
-    </ul>
+    </TransitionGroup>
   </div>
 </div>
 </template>
+
+<style scoped>
+.player-enter-from { opacity: 0; transform: translateY(6px) scale(.96); }
+.player-enter-active { transition: all 200ms cubic-bezier(.4,0,.2,1); }
+.player-leave-active { transition: all 160ms cubic-bezier(.4,0,.2,1); position: relative; }
+.player-leave-to { opacity: 0; transform: translateX(-20px) scale(.92); }
+.player-move { transition: transform 240ms cubic-bezier(.4,0,.2,1); }
+</style>
