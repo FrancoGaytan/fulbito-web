@@ -51,6 +51,12 @@ const isFinalized = computed(() => !!current.value?.result || current.value?.sta
 
 const ratingApplied = computed(() => !!current.value?.ratingApplied || !!myVotesState.value?.ratingApplied);
 
+// Permisos para aplicar ratings: permitir si todavía no se aplicaron y el usuario es owner del match o del grupo
+const canApply = computed(() => {
+  if (ratingApplied.value) return false;
+  return !!(current.value?.canEdit || meta.value?.isOwner || current.value?.isOwnerMatch);
+});
+
 const finalScore = computed(() => {
   const r = (current.value as any)?.result;
   const a = r?.scoreA ?? current.value?.teams?.[0]?.score ?? 0;
@@ -153,6 +159,7 @@ async function votePlayer(playerId: UUID, vote: 'up' | 'neutral' | 'down') {
 
 async function applyRatingsNow() {
   if (!current.value) return;
+  if (!canApply.value) return;
   // Opcional: confirmar (especialmente si más adelante tenemos gating multi-usuario)
   if (!window.confirm('¿Aplicar ratings ahora? Esto cerrará la votación para todos.')) return;
   applyingRatings.value = true;
@@ -296,7 +303,7 @@ async function applyRatingsNow() {
         </ul>
         <div class="pt-2 border-t space-y-2">
           <button
-            v-if="current?.canEdit && playersForRating.length === 0"
+            v-if="canApply && playersForRating.length === 0"
             @click="applyRatingsNow"
             :disabled="applyingRatings"
             class="px-4 py-2 rounded bg-black text-white disabled:opacity-40"
