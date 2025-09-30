@@ -39,8 +39,11 @@ async function submit() {
           <div>
             <input v-model="email" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
-          <div>
+          <div class="space-y-1">
             <input v-model="password" type="password" placeholder="Contraseña" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+            <div class="flex justify-end">
+              <RouterLink to="/forgot" class="text-[11px] text-indigo-600 hover:underline">¿Olvidaste tu contraseña?</RouterLink>
+            </div>
           </div>
           <button :disabled="auth.loading" class="w-full px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium shadow hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
             {{ auth.loading ? 'Ingresando…' : 'Entrar' }}

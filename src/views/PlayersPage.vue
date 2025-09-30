@@ -115,32 +115,32 @@ async function removePlayer(id: string) {
     <div class="grid md:grid-cols-2 gap-6">
   <!-- Columna izquierda -->
   <div class="space-y-3">
-    <div v-for="a in leftKeys" :key="a" class="flex items-center gap-3">
-      <label class="w-48 text-sm text-gray-700 font-medium">{{ abilityLabels[a] }}</label>
-      <div class="flex items-center gap-2">
-        <button type="button" class="px-2 py-1 border rounded" @click="dec(a)">−</button>
+    <div v-for="a in leftKeys" :key="a" class="flex flex-wrap items-center gap-2 sm:gap-3">
+      <label class="flex-1 min-w-[110px] sm:w-48 text-sm text-gray-700 font-medium truncate">{{ abilityLabels[a] }}</label>
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="dec(a)">−</button>
         <input
           type="number" min="0" max="10" step="1"
           v-model.number="abilityScores[a]" @change="normalize(a)"
-          class="w-16 border rounded px-2 py-1 text-center"
+          class="w-14 sm:w-16 border rounded px-2 py-1 text-center"
         />
-        <button type="button" class="px-2 py-1 border rounded" @click="inc(a)">+</button>
+        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="inc(a)">+</button>
       </div>
     </div>
   </div>
 
   <!-- Columna derecha -->
   <div class="space-y-3">
-    <div v-for="a in rightKeys" :key="a" class="flex items-center gap-3">
-      <label class="w-48 text-sm text-gray-700 font-medium">{{ abilityLabels[a] }}</label>
-      <div class="flex items-center gap-2">
-        <button type="button" class="px-2 py-1 border rounded" @click="dec(a)">−</button>
+    <div v-for="a in rightKeys" :key="a" class="flex flex-wrap items-center gap-2 sm:gap-3">
+      <label class="flex-1 min-w-[110px] sm:w-48 text-sm text-gray-700 font-medium truncate">{{ abilityLabels[a] }}</label>
+      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="dec(a)">−</button>
         <input
           type="number" min="0" max="10" step="1"
           v-model.number="abilityScores[a]" @change="normalize(a)"
-          class="w-16 border rounded px-2 py-1 text-center"
+          class="w-14 sm:w-16 border rounded px-2 py-1 text-center"
         />
-        <button type="button" class="px-2 py-1 border rounded" @click="inc(a)">+</button>
+        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="inc(a)">+</button>
       </div>
     </div>
   </div>

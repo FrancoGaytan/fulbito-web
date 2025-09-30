@@ -35,3 +35,55 @@ export async function register(payload: LoginRequest, signal?: AbortSignal): Pro
   }
   throw lastErr || new Error('Registro falló en todos los endpoints');
 }
+
+// -------- Password Reset (código 6 dígitos) --------
+
+interface RequestResetResponse { ok: boolean; message: string; devCode?: string }
+interface VerifyResetResponse { resetSessionToken: string }
+interface ResetPasswordResponse { ok: boolean; token?: string }
+
+export function requestResetCode(email: string) {
+  return _postNoAuth<RequestResetResponse, { email: string }>(
+    '/api/auth/request-reset-code',
+    { email }
+  ).catch(async (e) => {
+    // fallback por si aún está sin /api/ prefijo
+    if (e?.status === 404) {
+      return _postNoAuth<RequestResetResponse, { email: string }>(
+        '/auth/request-reset-code',
+        { email }
+      );
+    }
+    throw e;
+  });
+}
+
+export function verifyResetCode(email: string, code: string) {
+  return _postNoAuth<VerifyResetResponse, { email: string; code: string }>(
+    '/api/auth/verify-reset-code',
+    { email, code }
+  ).catch(async (e) => {
+    if (e?.status === 404) {
+      return _postNoAuth<VerifyResetResponse, { email: string; code: string }>(
+        '/auth/verify-reset-code',
+        { email, code }
+      );
+    }
+    throw e;
+  });
+}
+
+export function resetPassword(email: string, resetSessionToken: string, newPassword: string) {
+  return _postNoAuth<ResetPasswordResponse, { email: string; resetSessionToken: string; newPassword: string }>(
+    '/api/auth/reset-password',
+    { email, resetSessionToken, newPassword }
+  ).catch(async (e) => {
+    if (e?.status === 404) {
+      return _postNoAuth<ResetPasswordResponse, { email: string; resetSessionToken: string; newPassword: string }>(
+        '/auth/reset-password',
+        { email, resetSessionToken, newPassword }
+      );
+    }
+    throw e;
+  });
+}
