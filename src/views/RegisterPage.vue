@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, inject } from 'vue'
 import { useRouter } from 'vue-router'
 import { register as apiRegister } from '../lib/auth.service'
 import { useAuth } from '../stores/auth'
@@ -13,6 +13,8 @@ const error = ref<string | null>(null)
 const debug = ref<any | null>(null)
 const autoRedirect = ref(true)
 const auth = useAuth()
+// Global toast (provided in App.vue)
+const pushToast = inject<(msg: string, type?: 'info' | 'success' | 'error', timeout?: number) => void>('pushToast')
 
 async function submit() {
   if (!email.value || !password.value) return
@@ -31,7 +33,17 @@ async function submit() {
     }
   } catch (e: any) {
     console.error('Register error', e)
-    error.value = e?.message || 'Error de registro'
+    // Detectar duplicado (backend 409 o mensaje mongo E11000)
+    const status = e?.status || e?.code || e?.response?.status
+    const msg: string = e?.message || ''
+    if (status === 409 || /E11000|duplicate/i.test(msg)) {
+      const friendly = 'Ya existe un usuario registrado con ese email'
+      error.value = friendly
+      pushToast?.(friendly, 'error')
+    } else {
+      error.value = msg || 'Error de registro'
+      if (msg) pushToast?.(msg, 'error')
+    }
   } finally {
     loading.value = false
   }

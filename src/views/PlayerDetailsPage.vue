@@ -116,22 +116,22 @@ async function saveSkills() {
         </div>
         <div class="grid md:grid-cols-2 gap-6">
           <div class="space-y-3">
-            <div v-for="k in abilityKeys.slice(0, Math.ceil(abilityKeys.length/2))" :key="k" class="flex items-center gap-3">
-              <label class="w-48 text-sm text-gray-700 font-medium">{{ abilityLabels[k] }}</label>
-              <div class="flex items-center gap-2">
-                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40" :disabled="!canEdit" @click="dec(k)">−</button>
-                <input type="number" min="0" max="10" step="1" v-model.number="editAbilities[k]" @change="normalize(k)" :disabled="!canEdit" class="w-16 border rounded px-2 py-1 text-center" />
-                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40" :disabled="!canEdit" @click="inc(k)">+</button>
+            <div v-for="k in abilityKeys.slice(0, Math.ceil(abilityKeys.length/2))" :key="k" class="flex flex-wrap items-center gap-2 sm:gap-3">
+              <label class="flex-1 min-w-[110px] sm:w-48 text-sm text-gray-700 font-medium truncate">{{ abilityLabels[k] }}</label>
+              <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40 hover:bg-gray-50 active:scale-95" :disabled="!canEdit" @click="dec(k)">−</button>
+                <input type="number" min="0" max="10" step="1" v-model.number="editAbilities[k]" @change="normalize(k)" :disabled="!canEdit" class="w-14 sm:w-16 border rounded px-2 py-1 text-center" />
+                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40 hover:bg-gray-50 active:scale-95" :disabled="!canEdit" @click="inc(k)">+</button>
               </div>
             </div>
           </div>
           <div class="space-y-3">
-            <div v-for="k in abilityKeys.slice(Math.ceil(abilityKeys.length/2))" :key="k" class="flex items-center gap-3">
-              <label class="w-48 text-sm text-gray-700 font-medium">{{ abilityLabels[k] }}</label>
-              <div class="flex items-center gap-2">
-                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40" :disabled="!canEdit" @click="dec(k)">−</button>
-                <input type="number" min="0" max="10" step="1" v-model.number="editAbilities[k]" @change="normalize(k)" :disabled="!canEdit" class="w-16 border rounded px-2 py-1 text-center" />
-                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40" :disabled="!canEdit" @click="inc(k)">+</button>
+            <div v-for="k in abilityKeys.slice(Math.ceil(abilityKeys.length/2))" :key="k" class="flex flex-wrap items-center gap-2 sm:gap-3">
+              <label class="flex-1 min-w-[110px] sm:w-48 text-sm text-gray-700 font-medium truncate">{{ abilityLabels[k] }}</label>
+              <div class="flex items-center gap-1 sm:gap-2 shrink-0">
+                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40 hover:bg-gray-50 active:scale-95" :disabled="!canEdit" @click="dec(k)">−</button>
+                <input type="number" min="0" max="10" step="1" v-model.number="editAbilities[k]" @change="normalize(k)" :disabled="!canEdit" class="w-14 sm:w-16 border rounded px-2 py-1 text-center" />
+                <button type="button" class="px-2 py-1 border rounded disabled:opacity-40 hover:bg-gray-50 active:scale-95" :disabled="!canEdit" @click="inc(k)">+</button>
               </div>
             </div>
           </div>
