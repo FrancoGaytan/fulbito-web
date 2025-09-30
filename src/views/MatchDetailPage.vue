@@ -10,13 +10,12 @@ const id = route.params.id as UUID;
 const groupId = (route.query.group as string) || "";
 
 const players = usePlayers();
-const current = ref<Match | null>(null); // match actual
+const current = ref<Match | null>(null);
 const meta = ref<MatchesGroupResponse['meta'] | null>(null);
 const loading = ref(true);
 const loadingGen = ref(false);
 const applyingRatings = ref(false);
 const localChanges = ref<RatingChange[]>([]);
-// Estado individual de mis votos
 const myVotesState = ref<MyVotesResponse | null>(null);
 
 onMounted(async () => {
@@ -71,8 +70,8 @@ const finalizedAt = computed(() => {
 
 async function finish() {
   if (!current.value) return;
-  if (isFinalized.value) return; // evita doble finalize
-  if (!hasTeams.value) return; // no se puede finalizar sin equipos
+  if (isFinalized.value) return;
+  if (!hasTeams.value) return;
   const updated = await matchesApi.finalize(
     current.value._id,
     scoreA.value,
@@ -82,9 +81,7 @@ async function finish() {
   try { await players.fetch(); } catch (e) { console.warn('No se pudo refrescar jugadores', e); }
 }
 
-// Usamos getter del store (nameById(id))
-
-/** ¿el match ya tiene equipos? */
+// Equipos
 const hasTeams = computed(() => {
   const teams = (current.value as any)?.teams ?? [];
   if (!Array.isArray(teams) || teams.length < 2) return false;
@@ -93,13 +90,11 @@ const hasTeams = computed(() => {
   return total > 0;
 });
 
-/** Participantes anotados al match (solo si aún no hay equipos) */
 const participants = computed(() => {
   const ids = (current.value?.participants ?? []) as string[];
   return ids.map((pid) => ({ id: pid, name: players.nameById(pid) }));
 });
 
-/** Equipos ya armados (cuando existen) */
 const teamA = computed(() => {
   const t = ((current.value as any)?.teams ?? [])[0];
   const ids: string[] = t?.players ?? [];
@@ -112,7 +107,6 @@ const teamB = computed(() => {
 });
 
 
-// Jugadores a calificar: union de A y B (solo cuando finalizado y no aplicado)
 const playersForRating = computed(() => {
   if (!isFinalized.value || ratingApplied.value) return [] as { id: string; name: string }[];
   const merged: Record<string, { id: string; name: string }> = {};
@@ -122,7 +116,6 @@ const playersForRating = computed(() => {
   return Object.values(merged).filter((p) => !mySet.has(p.id));
 });
 
-/** Armar equipos */
 async function autoTeams() {
   if (!current.value || !current.value.canEdit) return;
   loadingGen.value = true;
@@ -136,9 +129,7 @@ async function autoTeams() {
     loadingGen.value = false;
   }
 }
-// (removido bloque duplicado de refresco de votos)
-
-/** Finalizar (mantengo tu lógica) */
+// Finalización y votos
 const scoreA = ref<number>(0);
 const scoreB = ref<number>(0);
 

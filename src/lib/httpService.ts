@@ -1,25 +1,19 @@
-// httpService.ts
 import { localStorageKeys } from "../utils/localStorageKeys";
 import { buildError, parseJsonSafe } from "../utils/serviceUtils";
 
-// Lee VITE_API_URL (prod) y cae a VITE_API_BASE_URL (legacy)
 const RAW = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
-// Quita barra final
 const BASE = RAW.replace(/\/+$/, "");
 
-// Construye URL: agrega una sola barra y limpia la inicial de `path`
 function u(path: string): string {
   let clean = String(path ?? "").replace(/^\/+/, "");
-  // Evita doble /api cuando BASE ya termina en /api y la ruta también empieza con api/
   if (/\/api$/i.test(BASE) && /^api\//i.test(clean)) {
-    // console.warn sólo en dev para ayudar a detectar mala config
     if (import.meta.env.DEV) {
       // eslint-disable-next-line no-console
       console.warn('[httpService] Normalizando ruta para evitar /api/api: BASE=%s path=%s', BASE, path);
     }
-    clean = clean.substring(4); // quita 'api/'
+    clean = clean.substring(4);
   }
-  return BASE ? `${BASE}/${clean}` : `/${clean}`; // si BASE vacío, usa relativo
+  return BASE ? `${BASE}/${clean}` : `/${clean}`;
 }
 
 function getToken(): string | null {
@@ -40,7 +34,6 @@ function buildHeaders(json: boolean) {
   } as Record<string, string>;
 }
 
-// Variante sin Authorization (para login / register)
 function buildHeadersNoAuth(json: boolean) {
   return {
     ...(json ? { "Content-Type": "application/json" } : {}),
@@ -51,16 +44,14 @@ function baseConfig(json: boolean): RequestInit {
   return {
     mode: "cors",
     cache: "no-cache",
-    credentials: "same-origin", // usamos JWT en localStorage, no cookies
+    credentials: "same-origin",
     headers: buildHeaders(json),
   };
 }
 
 function handle401(res: Response) {
   if (res.status === 401) {
-    // Limpiamos token inválido
     localStorage.removeItem(localStorageKeys.token);
-    // Evitar redirecciones mientras el usuario está en pantallas públicas de auth
     const PUBLIC_AUTH_PATHS = ["/login", "/register"];
     if (!PUBLIC_AUTH_PATHS.includes(location.pathname)) {
       location.href = "/login";
@@ -109,7 +100,6 @@ export async function _post<T, P = any>(path: string, payload?: P, signal?: Abor
   });
   if (response.status === 401) handle401(response);
   if (!response.ok) {
-    // Intentamos extraer mensaje del backend
     try {
       const data = await parseJsonSafe(response);
       const msg = data?.message || `POST ${path} failed (${response.status})`;
@@ -132,7 +122,6 @@ export async function _postNoAuth<T, P = any>(path: string, payload?: P, signal?
     signal,
     body: payload ? JSON.stringify(payload) : undefined,
   });
-  // Para no-auth, si devuelve 401 NO redirigimos automáticamente; sólo lanzamos error
   if (response.status === 401) {
     const data = await parseJsonSafe(response);
     const msg = data?.message || `POST ${path} unauthorized`;
@@ -206,7 +195,6 @@ export async function _del<T = void>(path: string, signal?: AbortSignal): Promis
     const data = await parseJsonSafe(response);
     throw buildError(response, data?.message || "DELETE request failed");
   }
-  // si el backend devuelve 200 con JSON { message: ... }
   if (response.status === 204) return undefined as T;
   const ct = response.headers.get("content-type") || "";
   if (ct.includes("application/json")) return (await response.json()) as T;

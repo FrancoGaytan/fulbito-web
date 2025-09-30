@@ -17,7 +17,6 @@ onMounted(async () => {
   } finally { loading.value = false; }
 });
 
-/** valor local para datetime-local (evita el shift del toISOString()) */
 function nowLocalForInput() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -31,10 +30,8 @@ const selectedPlayers = ref<UUID[]>([]);
 const when = ref<string>(nowLocalForInput());
 const items = ref<Match[]>([]);
 const meta = ref<MatchesGroupResponse['meta'] | null>(null);
-// IDs de partidos recién creados para highlight temporal
 const highlights = ref<Record<string, boolean>>({});
 
-/** IDs de miembros del grupo (tolera members | players) */
 const groupMemberIds = computed<string[]>(() => {
   const g = groups.items.find((x) => x._id === selectedGroup.value);
   if (!g) return [];
@@ -43,13 +40,11 @@ const groupMemberIds = computed<string[]>(() => {
   );
 });
 
-/** Jugadores filtrados por grupo seleccionado */
 const groupMembers = computed(() => {
   const set = new Set(groupMemberIds.value);
   return players.items.filter((p) => set.has(String(p._id)));
 });
 
-/** Al cambiar de grupo: refresco lista y limpio selección */
 watch(selectedGroup, async (gid) => {
   const set = new Set(groupMemberIds.value);
   selectedPlayers.value = selectedPlayers.value.filter((id) =>
@@ -72,7 +67,6 @@ watch(selectedGroup, async (gid) => {
 async function createMatch() {
   if (!selectedGroup.value || selectedPlayers.value.length < 2) return;
 
-  // el backend espera scheduledAt (ISO). Convertimos el valor local a ISO.
   const scheduledAt = when.value ? new Date(when.value).toISOString() : undefined;
 
   const m = await apiCreateMatch(
@@ -82,7 +76,6 @@ async function createMatch() {
   );
 
   items.value.unshift(m);
-  // highlight verde 1 segundo
   highlights.value[m._id] = true;
   setTimeout(() => { delete highlights.value[m._id]; }, 600);
   selectedPlayers.value = [];

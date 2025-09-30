@@ -16,7 +16,6 @@ onMounted(async () => {
   finally { loading.value = false; }
 });
 
-/** ---------- Crear grupo ---------- */
 const gName = ref("");
 const gDesc = ref("");
 const creating = ref(false);
@@ -42,10 +41,9 @@ async function createNewGroup() {
   }
 }
 
-/** ---------- Panel agregar jugadores ---------- */
-const panelFor = ref<UUID | "">(""); // groupId con panel abierto
-const search = ref(""); // filtro de búsqueda
-const selected = ref<UUID[]>([]); // ids seleccionados en el panel
+const panelFor = ref<UUID | "">("");
+const search = ref("");
+const selected = ref<UUID[]>([]);
 
 const activeGroup = computed(
   () => groups.items.find((g) => g._id === panelFor.value) ?? null
@@ -81,7 +79,6 @@ function openPanel(groupId: UUID) {
 async function addSelected() {
   if (!activeGroup.value || selected.value.length === 0) return;
   await groupsApi.addPlayersToGroup(activeGroup.value._id, selected.value);
-  // Optimista: actualizo members localmente (soporta members/players)
   const current = memberIdsFromAny(activeGroup.value);
   const next = Array.from(new Set([...current, ...selected.value]));
   (activeGroup.value as any).members = next;

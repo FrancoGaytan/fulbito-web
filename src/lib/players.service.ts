@@ -2,12 +2,8 @@ import type { AbilityKey } from '../constants/abilities';
 import { _del, _get, _post, _patch } from '../lib/httpService';
 import type { Player } from '../types';
 
-export const listPlayers = (signal?: AbortSignal) =>
-  _get<Player[]>('/players', signal)
-
-// lista global de todos los players (para reclamar)
-export const listAllPlayers = (signal?: AbortSignal) =>
-  _get<Player[]>('/api/players/all', signal)
+export const listPlayers = (signal?: AbortSignal) => _get<Player[]>('/players', signal)
+export const listAllPlayers = (signal?: AbortSignal) => _get<Player[]>('/api/players/all', signal)
 
 export const createPlayer = (
   name: string,
@@ -21,7 +17,6 @@ export const createPlayer = (
     signal
   )
 
-// Si usás PATCH para abilities:
 export const updateAbilities = (playerId: string, abilities: string[], signal?: AbortSignal) =>
   _post<Player, { abilities: string[] }>(`/api/players/${playerId}/abilities?_method=PATCH`, { abilities }, signal);
 

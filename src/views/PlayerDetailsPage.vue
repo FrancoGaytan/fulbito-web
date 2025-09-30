@@ -18,7 +18,6 @@ const error = ref<string | null>(null)
 const player = ref<Player | null>(null)
 const playersStore = usePlayers()
 
-// Decodificamos el userId actual para permitir edición sólo si es dueño
 const currentUserId = computed(() => {
   try {
     const token = localStorage.getItem(localStorageKeys.token)
@@ -30,7 +29,6 @@ const currentUserId = computed(() => {
 
 const canEdit = computed(() => !!player.value && player.value.userId === currentUserId.value)
 
-// Estado local de habilidades editable
 const editAbilities = reactive<Record<AbilityKey, number>>({} as any)
 
 function loadEditableAbilities(p: Player) {

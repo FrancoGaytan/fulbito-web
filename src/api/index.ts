@@ -3,19 +3,16 @@ import { _get, _post } from '../lib/httpService';
 
 
 export const api = {
-// GROUPS
-// Actualizado: /api/groups devuelve owner o miembro + flags
+// Groups
 listGroups: () => _get<Group[]>('/api/groups'),
 createGroup: (payload: Pick<Group, 'name'>) => _post<Group>('/groups', payload),
 
-
-// PLAYERS
+// Players
 listPlayers: () => _get<Player[]>('/players'),
 createPlayer: (payload: Pick<Player, 'name' | 'nickname'>) => _post<Player>('/players', payload),
 addPlayerToGroup: (groupId: UUID, playerId: UUID) => _post(`/api/groups/${groupId}/players`, { playerId }),
 
-
-// MATCHES
+// Matches
 listMatches: () => _get<Match[]>('/matches'),
 createMatch: (payload: { groupId: UUID; playerIds: UUID[]; date: string }) => _post<Match>('/matches', payload),
 getMatch: (id: UUID) => _get<Match>(`/matches/${id}`),

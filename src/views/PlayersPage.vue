@@ -31,7 +31,6 @@ function normalize(key: AbilityKey) { abilityScores[key] = clamp(abilityScores[k
 
 async function createPlayer() {
   if (!name.value.trim()) return
-  // mandamos solo las que sean > 0
   const payload: Partial<Record<AbilityKey, number>> = {}
   for (const k of abilityKeys) {
     const v = clamp(abilityScores[k])
@@ -40,7 +39,6 @@ async function createPlayer() {
   const p = await playersApi.createPlayer(name.value, nickname.value || undefined, payload)
   players.items.push(p)
 
-  // reset
   name.value = ''
   nickname.value = ''
   abilityKeys.forEach(k => (abilityScores[k] = 0))
@@ -56,7 +54,6 @@ onMounted(async () => {
   } finally { loading.value = false }
 })
 
-// userId del JWT (simple decode base64 sin validar). Si el token cambia o estructura distinta, mejorar.
 const currentUserId = computed(() => {
   try {
     const token = localStorage.getItem(localStorageKeys.token)
@@ -66,7 +63,6 @@ const currentUserId = computed(() => {
   } catch { return '' }
 })
 
-// Jugador actualmente reclamado por este usuario (si existe)
 const myClaimedPlayerId = computed(() => players.items.find(p => p.userId && p.userId === currentUserId.value)?._id || '')
 
 
@@ -74,7 +70,6 @@ async function claim(p: any) {
   if (p.userId) return
   try {
     const updated = await playersApi.claimPlayer(p._id)
-    // actualizar en memoria
     const idx = players.items.findIndex(x => x._id === p._id)
     if (idx >= 0) players.items[idx] = updated
   } catch (e: any) {

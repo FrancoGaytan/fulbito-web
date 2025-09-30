@@ -13,13 +13,8 @@ actions: {
 async fetch() {
 this.loading = true
 try {
-	// Intentar cargar lista global (owner o no) para tener nombres de participantes
-	try {
-		this.items = await listAllPlayers()
-	} catch {
-		// fallback al endpoint antiguo si el global no existe
-		this.items = await api.listPlayers()
-	}
+	try { this.items = await listAllPlayers() }
+	catch { this.items = await api.listPlayers() }
 } finally { this.loading = false }
 },
 }

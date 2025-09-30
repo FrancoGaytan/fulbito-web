@@ -42,7 +42,6 @@ export const sendFeedback = (
   signal?: AbortSignal
 ) => _post<void, PlayerFeedback>(`/matches/${id}/feedback`, payload, signal);
 
-// Nuevo helper explícito (el backend ahora devuelve { message, vote })
 export const voteMatchPlayer = (
   matchId: UUID,
   playerId: UUID,
@@ -60,14 +59,11 @@ export const finalize = (id: UUID, scoreA: number, scoreB: number) =>
 export const applyRatings = (id: UUID) =>
   _post<{ applied: number; changes: RatingChange[] }>(`/matches/${id}/apply-ratings`);
 
-// Nuevo: aplicar ratings exigiendo full completion (?requireFull=1)
 export const applyRatingsRequireFull = (id: UUID) =>
   _post<{ applied: number; changes: RatingChange[] }>(`/matches/${id}/apply-ratings?requireFull=1`);
 
-// Nuevo: estado de mis votos
 export const getMyVotes = (id: UUID) =>
   _get<MyVotesResponse>(`/matches/${id}/my-votes`);
 
-// Nuevo: progreso global
 export const getVoteProgress = (id: UUID) =>
   _get<VoteProgressResponse>(`/matches/${id}/vote-progress`);

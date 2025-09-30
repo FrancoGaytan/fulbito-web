@@ -20,7 +20,7 @@ export type Ability =
   | "speed"
   | "technique"
   | "stamina"
-  | string; // si tu API admite otras, lo dejamos abierto
+  | string;
 
 export interface Player {
   _id: UUID;
@@ -28,8 +28,8 @@ export interface Player {
   abilities?: Partial<Record<AbilityKey, number>>;
   rating?: number;
   nickname?: string;
-  gamesPlayed?: number; // número de partidos finalizados jugados
-  userId?: UUID; // usuario que reclamó este player (multi-user)
+  gamesPlayed?: number;
+  userId?: UUID;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -44,7 +44,6 @@ export interface Group {
   createdAt?: string;
   updatedAt?: string;
   owner?: UUID;
-  // Nuevos flags de acceso
   isOwner?: boolean;
   isMember?: boolean;
   canEdit?: boolean;
@@ -76,15 +75,12 @@ export interface Match {
   createdAt?: string;
   updatedAt?: string;
   result?: MatchResult;
-  // Nuevos campos feature ratings/feedback
   feedback?: PlayerFeedback[];
   ratingApplied?: boolean;
   ratingChanges?: RatingChange[];
-  // Nuevos flags backend
   owner?: UUID;
   isOwnerMatch?: boolean;
   canEdit?: boolean;
-  // Votos del usuario actual (playerIds ya calificados por este usuario)
   myVotes?: UUID[];
 }
 
@@ -116,7 +112,6 @@ export interface RatingChange {
   delta: number;
 }
 
-// Shape nuevo listado matches por grupo
 export interface MatchesGroupMeta {
   isOwner: boolean;
   isMember: boolean;
@@ -129,7 +124,6 @@ export interface MatchesGroupResponse {
   meta: MatchesGroupMeta;
 }
 
-// Votación por usuario (nuevo endpoint /matches/:id/my-votes)
 export interface MyVoteEntry {
   playerId: UUID;
   vote: Vote;
@@ -139,19 +133,18 @@ export interface MyVoteEntry {
 export interface MyVotesResponse {
   matchId: UUID;
   ratingApplied: boolean;
-  ratingChanges?: RatingChange[]; // presente si ya se aplicaron
+  ratingChanges?: RatingChange[];
   totalPlayers: number;
-  myVotes: MyVoteEntry[]; // detalle
-  myVotedPlayerIds: UUID[]; // redundante / conveniente
+  myVotes: MyVoteEntry[];
+  myVotedPlayerIds: UUID[];
   remainingPlayerIds: UUID[];
-  completed: boolean; // true si votó a todos
+  completed: boolean;
 }
 
-// Progreso global (nuevo endpoint /matches/:id/vote-progress)
 export interface VoteProgressPerPlayer {
   playerId: UUID;
   totalVotes: number;
-  distinctVoters: UUID[]; // userIds
+  distinctVoters: UUID[];
 }
 export interface VoteProgressPerVoter {
   userId: UUID;

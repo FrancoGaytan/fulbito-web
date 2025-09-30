@@ -28,7 +28,6 @@ export async function register(payload: LoginRequest, signal?: AbortSignal): Pro
       return { ...res, endpoint: ep };
     } catch (e: any) {
       lastErr = e;
-      // Probamos siguiente sólo si 404; si 401 significa credenciales malas o backend exige algo
       if (e?.status === 401) break;
       if (!(e?.status === 404 || /404/.test(String(e?.message)))) break;
     }
@@ -36,7 +35,7 @@ export async function register(payload: LoginRequest, signal?: AbortSignal): Pro
   throw lastErr || new Error('Registro falló en todos los endpoints');
 }
 
-// -------- Password Reset (código 6 dígitos) --------
+// Password Reset
 
 interface RequestResetResponse { ok: boolean; message: string; devCode?: string }
 interface VerifyResetResponse { resetSessionToken: string }
@@ -47,7 +46,6 @@ export function requestResetCode(email: string) {
     '/api/auth/request-reset-code',
     { email }
   ).catch(async (e) => {
-    // fallback por si aún está sin /api/ prefijo
     if (e?.status === 404) {
       return _postNoAuth<RequestResetResponse, { email: string }>(
         '/auth/request-reset-code',
