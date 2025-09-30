@@ -84,6 +84,8 @@ export interface Match {
   owner?: UUID;
   isOwnerMatch?: boolean;
   canEdit?: boolean;
+  // Votos del usuario actual (playerIds ya calificados por este usuario)
+  myVotes?: UUID[];
 }
 
 // Health
@@ -125,4 +127,41 @@ export interface MatchesGroupMeta {
 export interface MatchesGroupResponse {
   matches: Match[];
   meta: MatchesGroupMeta;
+}
+
+// Votación por usuario (nuevo endpoint /matches/:id/my-votes)
+export interface MyVoteEntry {
+  playerId: UUID;
+  vote: Vote;
+  note?: string;
+}
+
+export interface MyVotesResponse {
+  matchId: UUID;
+  ratingApplied: boolean;
+  ratingChanges?: RatingChange[]; // presente si ya se aplicaron
+  totalPlayers: number;
+  myVotes: MyVoteEntry[]; // detalle
+  myVotedPlayerIds: UUID[]; // redundante / conveniente
+  remainingPlayerIds: UUID[];
+  completed: boolean; // true si votó a todos
+}
+
+// Progreso global (nuevo endpoint /matches/:id/vote-progress)
+export interface VoteProgressPerPlayer {
+  playerId: UUID;
+  totalVotes: number;
+  distinctVoters: UUID[]; // userIds
+}
+export interface VoteProgressPerVoter {
+  userId: UUID;
+  votedPlayerIds: UUID[];
+  completed: boolean;
+}
+export interface VoteProgressResponse {
+  matchId: UUID;
+  perPlayer: VoteProgressPerPlayer[];
+  perVoter: VoteProgressPerVoter[];
+  allPlayersHaveAtLeastOneVote: boolean;
+  allVotersCompletedAllPlayers: boolean;
 }

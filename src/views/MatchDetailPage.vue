@@ -3,7 +3,7 @@ import { onMounted, ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import * as matchesApi from "../lib/matches.service";
 import { usePlayers } from "../stores/players";
-import type { UUID, Match, RatingChange, MatchesGroupResponse } from "../types";
+import type { UUID, Match, RatingChange, MatchesGroupResponse, MyVotesResponse } from "../types";
 
 const route = useRoute();
 const id = route.params.id as UUID;
@@ -16,8 +16,8 @@ const loading = ref(true);
 const loadingGen = ref(false);
 const applyingRatings = ref(false);
 const localChanges = ref<RatingChange[]>([]);
-// votos hechos en esta sesión (para ocultar jugador tras votar)
-const voted = ref<Record<string, true>>({});
+// Estado individual de mis votos
+const myVotesState = ref<MyVotesResponse | null>(null);
 
 onMounted(async () => {
   try {
@@ -26,15 +26,30 @@ onMounted(async () => {
       const resp = await matchesApi.listByGroup(groupId as UUID);
       meta.value = resp.meta;
       current.value = resp.matches.find((m) => m._id === id) ?? null;
+      if (current.value) await hydrateMyVotes();
     }
   } finally {
     loading.value = false;
   }
 });
 
+async function hydrateMyVotes() {
+  if (!current.value) return;
+  try {
+    const mv = await matchesApi.getMyVotes(current.value._id);
+    myVotesState.value = mv;
+    if (mv.ratingApplied && mv.ratingChanges) localChanges.value = mv.ratingChanges;
+    current.value.myVotes = mv.myVotedPlayerIds as any;
+    if (mv.ratingApplied) current.value.ratingApplied = true as any;
+    if (mv.ratingChanges) current.value.ratingChanges = mv.ratingChanges as any;
+  } catch (e) {
+    console.warn('No se pudo cargar mis votos', e);
+  }
+}
+
 const isFinalized = computed(() => !!current.value?.result || current.value?.status === "finalized");
 
-const ratingApplied = computed(() => !!current.value?.ratingApplied);
+const ratingApplied = computed(() => !!current.value?.ratingApplied || !!myVotesState.value?.ratingApplied);
 
 const finalScore = computed(() => {
   const r = (current.value as any)?.result;
@@ -90,13 +105,15 @@ const teamB = computed(() => {
   return ids.map((id) => ({ id, name: players.nameById(id) }));
 });
 
+
 // Jugadores a calificar: union de A y B (solo cuando finalizado y no aplicado)
 const playersForRating = computed(() => {
   if (!isFinalized.value || ratingApplied.value) return [] as { id: string; name: string }[];
   const merged: Record<string, { id: string; name: string }> = {};
   for (const p of teamA.value) merged[p.id] = p;
   for (const p of teamB.value) merged[p.id] = p;
-  return Object.values(merged).filter((p) => !voted.value[p.id]);
+  const mySet = new Set((current.value?.myVotes ?? myVotesState.value?.myVotedPlayerIds ?? []).map(String));
+  return Object.values(merged).filter((p) => !mySet.has(p.id));
 });
 
 /** Armar equipos */
@@ -113,30 +130,38 @@ async function autoTeams() {
     loadingGen.value = false;
   }
 }
+// (removido bloque duplicado de refresco de votos)
 
 /** Finalizar (mantengo tu lógica) */
 const scoreA = ref<number>(0);
 const scoreB = ref<number>(0);
 
 async function votePlayer(playerId: UUID, vote: 'up' | 'neutral' | 'down') {
-  if (!current.value) return;
+  if (!current.value || ratingApplied.value) return;
   try {
-    await matchesApi.sendFeedback(current.value._id, { playerId, vote });
-    voted.value[playerId] = true;
-  } catch (e) {
+    await matchesApi.voteMatchPlayer(current.value._id, playerId, vote);
+    // Actualizamos myVotes localmente para no requerir refetch inmediato
+  if (!current.value.myVotes) current.value.myVotes = [] as any;
+  const mv = current.value.myVotes as UUID[];
+  if (!mv.includes(playerId)) mv.push(playerId);
+    await hydrateMyVotes();
+  } catch (e: any) {
     console.error(e);
-    alert('No se pudo enviar el feedback');
+    alert(e?.message || 'No se pudo enviar el voto');
   }
 }
 
 async function applyRatingsNow() {
   if (!current.value) return;
+  // Opcional: confirmar (especialmente si más adelante tenemos gating multi-usuario)
+  if (!window.confirm('¿Aplicar ratings ahora? Esto cerrará la votación para todos.')) return;
   applyingRatings.value = true;
   try {
     const res = await matchesApi.applyRatings(current.value._id);
     current.value.ratingApplied = true as any;
     current.value.ratingChanges = res.changes as any;
     localChanges.value = res.changes;
+    await hydrateMyVotes();
   } catch (e: any) {
     console.error(e);
     alert(e?.message || 'No se pudieron aplicar los ratings');
@@ -161,11 +186,9 @@ async function applyRatingsNow() {
       </button>
     </div>
 
-    <!-- ─────── Sección superior: PARTICIPANTES o EQUIPOS ─────── -->
-    <!-- 1) Si YA hay equipos, muestro A y B -->
     <div v-if="hasTeams" class="grid md:grid-cols-2 gap-4">
       <div class="bg-white p-4 rounded-xl shadow border space-y-2">
-        <h2 class="font-medium">Equipo A</h2>
+        <h2 class="font-medium">Equipo A (claro)</h2>
         <ul class="space-y-1">
           <li v-for="p in teamA" :key="p.id" class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-gray-400" />
@@ -174,7 +197,7 @@ async function applyRatingsNow() {
         </ul>
       </div>
       <div class="bg-white p-4 rounded-xl shadow border space-y-2">
-        <h2 class="font-medium">Equipo B</h2>
+        <h2 class="font-medium">Equipo B (oscuro)</h2>
         <ul class="space-y-1">
           <li v-for="p in teamB" :key="p.id" class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-gray-400" />
@@ -263,14 +286,21 @@ async function applyRatingsNow() {
             </div>
           </li>
         </ul>
-        <div class="pt-2 border-t">
+        <div class="pt-2 border-t space-y-2">
           <button
+            v-if="current?.canEdit && playersForRating.length === 0"
             @click="applyRatingsNow"
-            :disabled="playersForRating.length > 0 || applyingRatings"
+            :disabled="applyingRatings"
             class="px-4 py-2 rounded bg-black text-white disabled:opacity-40"
           >
             {{ applyingRatings ? 'Aplicando…' : 'Aplicar ratings' }}
           </button>
+          <p v-else-if="playersForRating.length === 0" class="text-xs text-gray-500">
+            Esperando que el organizador aplique los ratings…
+          </p>
+          <p v-else class="text-xs text-gray-500">
+            Votá a los jugadores restantes para cerrar tu parte de la votación.
+          </p>
         </div>
       </template>
       <template v-else>

@@ -1,5 +1,5 @@
 import { _del, _get, _post } from "../lib/httpService";
-import type { Match, UUID, PlayerFeedback, GenerateTeamsResponse, RatingChange, MatchesGroupResponse } from "../types";
+import type { Match, UUID, PlayerFeedback, GenerateTeamsResponse, RatingChange, MatchesGroupResponse, MyVotesResponse, VoteProgressResponse } from "../types";
 
 export const listByGroup = (groupId: UUID, signal?: AbortSignal) =>
   _get<MatchesGroupResponse>(`/matches/group/${groupId}`, signal);
@@ -42,8 +42,32 @@ export const sendFeedback = (
   signal?: AbortSignal
 ) => _post<void, PlayerFeedback>(`/matches/${id}/feedback`, payload, signal);
 
+// Nuevo helper explícito (el backend ahora devuelve { message, vote })
+export const voteMatchPlayer = (
+  matchId: UUID,
+  playerId: UUID,
+  vote: 'up' | 'neutral' | 'down',
+  signal?: AbortSignal
+) => _post<{ message: string; vote: { playerId: UUID; vote: string } }, { playerId: UUID; vote: string }>(
+  `/matches/${matchId}/feedback`,
+  { playerId, vote },
+  signal
+);
+
 export const finalize = (id: UUID, scoreA: number, scoreB: number) =>
   _post<Match>(`/matches/${id}/finalize`, { scoreA, scoreB });
 
 export const applyRatings = (id: UUID) =>
   _post<{ applied: number; changes: RatingChange[] }>(`/matches/${id}/apply-ratings`);
+
+// Nuevo: aplicar ratings exigiendo full completion (?requireFull=1)
+export const applyRatingsRequireFull = (id: UUID) =>
+  _post<{ applied: number; changes: RatingChange[] }>(`/matches/${id}/apply-ratings?requireFull=1`);
+
+// Nuevo: estado de mis votos
+export const getMyVotes = (id: UUID) =>
+  _get<MyVotesResponse>(`/matches/${id}/my-votes`);
+
+// Nuevo: progreso global
+export const getVoteProgress = (id: UUID) =>
+  _get<VoteProgressResponse>(`/matches/${id}/vote-progress`);
