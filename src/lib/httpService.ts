@@ -4,7 +4,7 @@ import { buildError, parseJsonSafe } from "../utils/serviceUtils";
 const RAW = (import.meta.env.VITE_API_URL ?? import.meta.env.VITE_API_BASE_URL ?? "").trim();
 const BASE = RAW.replace(/\/+$/, "");
 
-function u(path: string): string {
+function buildUrl(path: string): string {
   let clean = String(path ?? "").replace(/^\/+/, "");
   if (/\/api$/i.test(BASE) && /^api\//i.test(clean)) {
     if (import.meta.env.DEV) {
@@ -61,7 +61,7 @@ function handle401(res: Response) {
 }
 
 export async function _get<T>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     ...baseConfig(true),
     method: "GET",
     signal,
@@ -81,7 +81,7 @@ export async function _get<T>(path: string, signal?: AbortSignal): Promise<T> {
 }
 
 export async function __getFiles(path: string, signal?: AbortSignal): Promise<Blob> {
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     ...baseConfig(false),
     method: "GET",
     signal,
@@ -92,7 +92,7 @@ export async function __getFiles(path: string, signal?: AbortSignal): Promise<Bl
 }
 
 export async function _post<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     ...baseConfig(true),
     method: "POST",
     signal,
@@ -113,7 +113,7 @@ export async function _post<T, P = any>(path: string, payload?: P, signal?: Abor
 }
 
 export async function _postNoAuth<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     mode: "cors",
     cache: "no-cache",
     credentials: "same-origin",
@@ -143,7 +143,7 @@ export async function _postNoAuth<T, P = any>(path: string, payload?: P, signal?
 export async function _postFiles<T = any>(formFile: File | Blob, path: string, signal?: AbortSignal): Promise<T> {
   const formData = new FormData();
   formData.append("file", formFile);
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     ...baseConfig(false),
     method: "POST",
     signal,
@@ -155,7 +155,7 @@ export async function _postFiles<T = any>(formFile: File | Blob, path: string, s
 }
 
 export async function _put<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     ...baseConfig(true),
     method: "PUT",
     signal,
@@ -170,7 +170,7 @@ export async function _put<T, P = any>(path: string, payload?: P, signal?: Abort
 }
 
 export async function _patch<T, P = any>(path: string, payload?: P, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     ...baseConfig(true),
     method: "PATCH",
     signal,
@@ -185,7 +185,7 @@ export async function _patch<T, P = any>(path: string, payload?: P, signal?: Abo
 }
 
 export async function _del<T = void>(path: string, signal?: AbortSignal): Promise<T> {
-  const response = await fetch(u(path), {
+  const response = await fetch(buildUrl(path), {
     ...baseConfig(true),
     method: "DELETE",
     signal,
