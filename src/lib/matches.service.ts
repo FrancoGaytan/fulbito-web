@@ -1,8 +1,8 @@
 import { _del, _get, _post } from "../lib/httpService";
-import type { Match, UUID, PlayerFeedback, GenerateTeamsResponse, RatingChange } from "../types";
+import type { Match, UUID, PlayerFeedback, GenerateTeamsResponse, RatingChange, MatchesGroupResponse } from "../types";
 
 export const listByGroup = (groupId: UUID, signal?: AbortSignal) =>
-  _get<Match[]>(`/matches/group/${groupId}`, signal);
+  _get<MatchesGroupResponse>(`/matches/group/${groupId}`, signal);
 
 export async function create(
   groupId: UUID,

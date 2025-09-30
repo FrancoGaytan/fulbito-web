@@ -1,10 +1,13 @@
 import { _del, _get, _post } from '../lib/httpService';
 import type { Group } from '../types';
 
-export const listGroups = () => _get<Group[]>('/groups')
+// Ahora backend expone /api/groups devolviendo owner o miembro
+export const listGroups = () => _get<Group[]>('/api/groups')
+
+export const getGroup = (id: string) => _get<Group>(`/api/groups/${id}`)
 
 export const createGroup = (name: string, description?: string) =>
-  _post<Group>('/groups', description?.trim() ? { name, description } : { name })
+  _post<Group>('/groups', description?.trim() ? { name, description } : { name }) // backend mantiene este?
 
 export const addPlayerToGroup = (groupId: string, playerId: string, signal?: AbortSignal) =>
   _post<void, { playerId: string }>(`/api/groups/${groupId}/players`, { playerId }, signal);

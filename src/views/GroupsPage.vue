@@ -139,6 +139,10 @@ async function removeGroup(id: UUID) {
     >
       <div class="flex items-center gap-3">
         <h2 class="font-medium text-lg">{{ g.name }}</h2>
+        <div class="flex items-center gap-2">
+          <span v-if="g.isOwner" class="text-[10px] uppercase tracking-wide bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">Owner</span>
+          <span v-else-if="g.isMember" class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded">Miembro</span>
+        </div>
         <span class="ml-auto text-sm text-gray-500">
           {{ memberIdsFromAny(g).length }} jugadores
         </span>
@@ -156,12 +160,16 @@ async function removeGroup(id: UUID) {
 
       <div class="flex gap-2 justify-between">
         <button
-          class="px-3 py-1.5 rounded bg-black text-white"
+          class="px-3 py-1.5 rounded text-white disabled:opacity-50"
+          :class="g.canEdit ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
+          :disabled="!g.canEdit"
           @click="openPanel(g._id)"
+          :title="g.canEdit ? 'Agregar jugadores' : 'Solo el owner puede agregar jugadores'"
         >
           Agregar jugadores
         </button>
         <button
+          v-if="g.canEdit"
           type="button"
           @click="removeGroup(g._id as UUID)"
           class="ml-2 px-3 py-1 text-s rounded bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"

@@ -3,7 +3,7 @@ import { onMounted, ref, computed } from "vue";
 import { useRoute } from "vue-router";
 import * as matchesApi from "../lib/matches.service";
 import { usePlayers } from "../stores/players";
-import type { UUID, Match, RatingChange } from "../types";
+import type { UUID, Match, RatingChange, MatchesGroupResponse } from "../types";
 
 const route = useRoute();
 const id = route.params.id as UUID;
@@ -11,6 +11,8 @@ const groupId = (route.query.group as string) || "";
 
 const players = usePlayers();
 const current = ref<Match | null>(null); // match actual
+const meta = ref<MatchesGroupResponse['meta'] | null>(null);
+const loading = ref(true);
 const loadingGen = ref(false);
 const applyingRatings = ref(false);
 const localChanges = ref<RatingChange[]>([]);
@@ -18,18 +20,19 @@ const localChanges = ref<RatingChange[]>([]);
 const voted = ref<Record<string, true>>({});
 
 onMounted(async () => {
-  // necesitamos nombres para mapear ids -> nombres
-  await players.fetch();
-
-  if (groupId) {
-    const list = await matchesApi.listByGroup(groupId as UUID);
-    current.value = list.find((m) => m._id === id) ?? null;
+  try {
+    await players.fetch();
+    if (groupId) {
+      const resp = await matchesApi.listByGroup(groupId as UUID);
+      meta.value = resp.meta;
+      current.value = resp.matches.find((m) => m._id === id) ?? null;
+    }
+  } finally {
+    loading.value = false;
   }
 });
 
-const isFinalized = computed(() => {
-  return !!current.value?.result || current.value?.status === "finalized";
-});
+const isFinalized = computed(() => !!current.value?.result || current.value?.status === "finalized");
 
 const ratingApplied = computed(() => !!current.value?.ratingApplied);
 
@@ -58,12 +61,7 @@ async function finish() {
   try { await players.fetch(); } catch (e) { console.warn('No se pudo refrescar jugadores', e); }
 }
 
-/** Diccionario id->nombre para usar en los listados */
-const nameById = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {};
-  for (const p of players.items) map[p._id] = p.name;
-  return map;
-});
+// Usamos getter del store (nameById(id))
 
 /** ¿el match ya tiene equipos? */
 const hasTeams = computed(() => {
@@ -77,19 +75,19 @@ const hasTeams = computed(() => {
 /** Participantes anotados al match (solo si aún no hay equipos) */
 const participants = computed(() => {
   const ids = (current.value?.participants ?? []) as string[];
-  return ids.map((pid) => ({ id: pid, name: nameById.value[pid] || pid }));
+  return ids.map((pid) => ({ id: pid, name: players.nameById(pid) }));
 });
 
 /** Equipos ya armados (cuando existen) */
 const teamA = computed(() => {
   const t = ((current.value as any)?.teams ?? [])[0];
   const ids: string[] = t?.players ?? [];
-  return ids.map((id) => ({ id, name: nameById.value[id] || id }));
+  return ids.map((id) => ({ id, name: players.nameById(id) }));
 });
 const teamB = computed(() => {
   const t = ((current.value as any)?.teams ?? [])[1];
   const ids: string[] = t?.players ?? [];
-  return ids.map((id) => ({ id, name: nameById.value[id] || id }));
+  return ids.map((id) => ({ id, name: players.nameById(id) }));
 });
 
 // Jugadores a calificar: union de A y B (solo cuando finalizado y no aplicado)
@@ -103,16 +101,16 @@ const playersForRating = computed(() => {
 
 /** Armar equipos */
 async function autoTeams() {
-  if (!current.value) return
-  loadingGen.value = true
+  if (!current.value || !current.value.canEdit) return;
+  loadingGen.value = true;
   try {
     const { teams } = await matchesApi.generateTeams(current.value._id, {
-      ai: true,               // o false si querés probar fallback
-      seed: Date.now(),       // cambia en cada click
-    })
-    ;(current.value as any).teams = teams
+      ai: true,
+      seed: Date.now(),
+    });
+    (current.value as any).teams = teams;
   } finally {
-    loadingGen.value = false
+    loadingGen.value = false;
   }
 }
 
@@ -150,14 +148,16 @@ async function applyRatingsNow() {
 
 <template>
   <div class="space-y-6">
+      <div v-if="loading" class="text-sm text-gray-500">Cargando partido…</div>
+      <template v-if="!loading && current">
     <div class="flex items-center gap-3">
       <h1 class="text-2xl font-semibold">Partido</h1>
       <button
         class="ml-auto px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-        :disabled="loadingGen || !current || isFinalized"
+          :disabled="loadingGen || !current || isFinalized || !current.canEdit"
         @click="autoTeams"
       >
-        {{ loadingGen ? "Generando…" : "Generar equipos" }}
+          {{ loadingGen ? "Generando…" : current.canEdit ? "Generar equipos" : "Sin permiso" }}
       </button>
     </div>
 
@@ -235,7 +235,7 @@ async function applyRatingsNow() {
           <button
             @click="finish"
             class="ml-3 px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-            :disabled="isFinalized || !hasTeams"
+            :disabled="isFinalized || !hasTeams || !current?.canEdit"
           >
             Finalizar
           </button>
@@ -287,7 +287,7 @@ async function applyRatingsNow() {
           </thead>
           <tbody>
             <tr v-for="c in (current?.ratingChanges || localChanges)" :key="c.playerId" class="border-t">
-              <td class="py-1 pr-2">{{ nameById[c.playerId] || c.playerId }}</td>
+              <td class="py-1 pr-2">{{ players.nameById(c.playerId) }}</td>
               <td class="py-1 pr-2">{{ c.before }}</td>
               <td class="py-1 pr-2">{{ c.after }}</td>
               <td class="py-1 pr-2 font-medium" :class="c.delta>0 ? 'text-green-600' : c.delta<0 ? 'text-red-600' : 'text-gray-500'">{{ c.delta>0? '+'+c.delta : c.delta }}</td>
@@ -296,5 +296,6 @@ async function applyRatingsNow() {
         </table>
       </template>
     </div>
+    </template>
   </div>
 </template>

@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
 import { listByGroup as apiListByGroup, create as apiCreateMatch, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
-import type { UUID, Match } from "../types";
+import type { UUID, Match, MatchesGroupResponse } from "../types";
 
 const groups = useGroups();
 const players = usePlayers();
@@ -26,6 +26,7 @@ const selectedGroup = ref<UUID | "">("");
 const selectedPlayers = ref<UUID[]>([]);
 const when = ref<string>(nowLocalForInput());
 const items = ref<Match[]>([]);
+const meta = ref<MatchesGroupResponse['meta'] | null>(null);
 // IDs de partidos recién creados para highlight temporal
 const highlights = ref<Record<string, boolean>>({});
 
@@ -53,8 +54,9 @@ watch(selectedGroup, async (gid) => {
 
   items.value = [];
   if (gid) {
-  const list = await apiListByGroup(gid as UUID);
-    // opcional: orden por fecha programada (o createdAt)
+  const resp = await apiListByGroup(gid as UUID);
+    meta.value = resp.meta;
+    const list = resp.matches;
     items.value = [...list].sort((a, b) => {
       const da = new Date((a.scheduledAt ?? (a as any).createdAt) || 0).getTime();
       const db = new Date((b.scheduledAt ?? (b as any).createdAt) || 0).getTime();
@@ -121,9 +123,11 @@ async function removeMatch(id: UUID) {
 
         <!-- Crear -->
         <button
-          class="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-          :disabled="!selectedGroup || selectedPlayers.length < 2"
+          class="px-4 py-2 rounded text-white disabled:opacity-50"
+          :class="meta?.canCreate ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
+          :disabled="!selectedGroup || selectedPlayers.length < 2 || !meta?.canCreate"
           @click="createMatch"
+          title="" :data-tip="!meta?.canCreate ? 'No tenés permiso para crear partidos en este grupo' : ''"
         >
           Crear partido
         </button>
@@ -170,6 +174,7 @@ async function removeMatch(id: UUID) {
           </div>
           <div class="flex items-center gap-2">
             <button
+              v-if="m.canEdit"
               type="button"
               @click="removeMatch(m._id as UUID)"
               class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"

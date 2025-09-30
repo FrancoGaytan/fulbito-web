@@ -43,6 +43,11 @@ export interface Group {
   players?: UUID[];
   createdAt?: string;
   updatedAt?: string;
+  owner?: UUID;
+  // Nuevos flags de acceso
+  isOwner?: boolean;
+  isMember?: boolean;
+  canEdit?: boolean;
 }
 
 // Matches
@@ -75,6 +80,10 @@ export interface Match {
   feedback?: PlayerFeedback[];
   ratingApplied?: boolean;
   ratingChanges?: RatingChange[];
+  // Nuevos flags backend
+  owner?: UUID;
+  isOwnerMatch?: boolean;
+  canEdit?: boolean;
 }
 
 // Health
@@ -103,4 +112,17 @@ export interface RatingChange {
   before: number;
   after: number;
   delta: number;
+}
+
+// Shape nuevo listado matches por grupo
+export interface MatchesGroupMeta {
+  isOwner: boolean;
+  isMember: boolean;
+  canCreate: boolean;
+  groupId: UUID;
+}
+
+export interface MatchesGroupResponse {
+  matches: Match[];
+  meta: MatchesGroupMeta;
 }
