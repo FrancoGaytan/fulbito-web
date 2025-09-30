@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
+import CenteredLoader from '../components/CenteredLoader.vue'
 import { localStorageKeys } from '../utils/localStorageKeys'
 import { useRouter } from 'vue-router'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
@@ -10,6 +11,7 @@ import { useGroups } from '../stores/groups'
 const players = usePlayers()
 const router = useRouter()
 const groups = useGroups()
+const loading = ref(true)
 
 const name = ref('')
 const nickname = ref('')
@@ -46,10 +48,12 @@ async function createPlayer() {
 
 const allPlayers = ref(players.items)
 onMounted(async () => {
-  await groups.fetch()
-  // usamos listado global para claim
-  allPlayers.value = await playersApi.listAllPlayers()
-  players.items = allPlayers.value // mantiene compatibilidad con UI existente
+  loading.value = true
+  try {
+    await groups.fetch()
+    allPlayers.value = await playersApi.listAllPlayers()
+    players.items = allPlayers.value
+  } finally { loading.value = false }
 })
 
 // userId del JWT (simple decode base64 sin validar). Si el token cambia o estructura distinta, mejorar.
@@ -100,7 +104,8 @@ async function removePlayer(id: string) {
 </script>
 
 <template>
-<div class="space-y-6">
+<CenteredLoader v-if="loading" label="Cargando jugadores…" />
+<div v-else class="space-y-6">
   <h1 class="text-2xl font-semibold">Jugadores</h1>
 
   <div class="bg-white p-4 rounded-xl shadow border space-y-4">

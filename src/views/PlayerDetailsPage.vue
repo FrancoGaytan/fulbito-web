@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue'
+import CenteredLoader from '../components/CenteredLoader.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
 import { getPlayer, updatePlayerSkills } from '../lib/players.service'
@@ -86,14 +87,14 @@ async function saveSkills() {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <CenteredLoader v-if="loading" label="Cargando jugador…" />
+  <div v-else class="space-y-6">
     <div class="flex flex-col gap-3">
       <button @click="router.back()" class="text-sm text-gray-600 hover:text-black flex">← Volver</button>
       <h1 class="text-2xl font-semibold">Perfil del Jugador</h1>
     </div>
 
-    <div v-if="loading" class="text-sm text-gray-500">Cargando…</div>
-  <div v-else-if="error" class="text-sm text-red-600 whitespace-pre-line">{{ error }}</div>
+    <div v-if="error" class="text-sm text-red-600 whitespace-pre-line">{{ error }}</div>
     <div v-else-if="player" class="space-y-6">
       <div class="bg-white p-5 rounded-xl shadow border space-y-2">
         <div class="flex items-center gap-3 flex-wrap">

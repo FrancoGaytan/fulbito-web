@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
+import CenteredLoader from '../components/CenteredLoader.vue';
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
 import { listByGroup as apiListByGroup, create as apiCreateMatch, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
@@ -7,10 +8,13 @@ import type { UUID, Match, MatchesGroupResponse } from "../types";
 
 const groups = useGroups();
 const players = usePlayers();
+const loading = ref(true);
 
-onMounted(() => {
-  groups.fetch();
-  players.fetch();
+onMounted(async () => {
+  loading.value = true;
+  try {
+    await Promise.all([groups.fetch(), players.fetch()]);
+  } finally { loading.value = false; }
 });
 
 /** valor local para datetime-local (evita el shift del toISOString()) */
@@ -103,7 +107,8 @@ async function removeMatch(id: UUID) {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <CenteredLoader v-if="loading" label="Cargando partidos…" />
+  <div v-else class="space-y-6">
     <div class="bg-white p-4 rounded-xl border space-y-3">
       <div class="grid md:grid-cols-[1fr,auto,auto] gap-3 items-center">
         <!-- Grupo -->

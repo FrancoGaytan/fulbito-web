@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import CenteredLoader from '../components/CenteredLoader.vue';
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
 import * as groupsApi from "../lib/groups.service";
@@ -7,10 +8,12 @@ import type { UUID } from "../types";
 
 const groups = useGroups();
 const players = usePlayers();
+const loading = ref(true);
 
-onMounted(() => {
-  groups.fetch();
-  players.fetch();
+onMounted(async () => {
+  loading.value = true;
+  try { await Promise.all([groups.fetch(), players.fetch()]); }
+  finally { loading.value = false; }
 });
 
 /** ---------- Crear grupo ---------- */
@@ -99,6 +102,8 @@ async function removeGroup(id: UUID) {
 </script>
 
 <template>
+  <CenteredLoader v-if="loading" label="Cargando grupos…" />
+  <template v-else>
   <!-- Crear grupo -->
   <div class="bg-white border rounded-xl p-4 mb-6">
     <h2 class="text-lg font-semibold mb-3">Crear grupo</h2>
@@ -222,6 +227,7 @@ async function removeGroup(id: UUID) {
       </div>
     </div>
   </TransitionGroup>
+  </template>
 </template>
 
 <style scoped>

@@ -173,7 +173,15 @@ async function applyRatingsNow() {
 
 <template>
   <div class="space-y-6">
-      <div v-if="loading" class="text-sm text-gray-500">Cargando partido…</div>
+      <div v-if="loading" class="fixed inset-0 flex items-center justify-center px-4">
+        <div class="flex flex-col items-center gap-4 text-center">
+          <div class="relative w-14 h-14">
+            <span class="absolute inset-0 rounded-full border-4 border-indigo-200"></span>
+            <span class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></span>
+          </div>
+          <p class="text-sm font-medium text-gray-700">Cargando partido…</p>
+        </div>
+      </div>
       <template v-if="!loading && current">
     <div class="flex items-center gap-3">
       <h1 class="text-2xl font-semibold">Partido</h1>
@@ -329,3 +337,8 @@ async function applyRatingsNow() {
     </template>
   </div>
 </template>
+
+<style scoped>
+@keyframes spin { to { transform: rotate(360deg); } }
+.animate-spin { animation: spin 0.9s linear infinite; }
+</style>
