@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from "vue";
 import { t } from '@/localizations';
 import CenteredLoader from '../components/CenteredLoader.vue';
+import MatchCard from '../components/MatchCard.vue';
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
 import { listByGroup as apiListByGroup, create as apiCreateMatch, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
@@ -82,12 +83,6 @@ async function createMatch() {
   selectedPlayers.value = [];
 }
 
-/** formateo con fallback por si hay partidos viejos sin scheduledAt */
-function viewDate(m: Match) {
-  const d: string | undefined =
-    m.scheduledAt ?? (m as any).date ?? (m as any).createdAt;
-  return d ? new Date(d).toLocaleString() : t('matches.noDate');
-}
 
 async function removeMatch(id: UUID) {
   try {
@@ -148,43 +143,16 @@ async function removeMatch(id: UUID) {
     </div>
 
     <!-- Listado de partidos con transición -->
-    <TransitionGroup
-      name="match"
-      tag="div"
-      class="space-y-3"
-      appear
-    >
-      <div
+    <TransitionGroup name="match" tag="div" class="space-y-3" appear>
+      <MatchCard
         v-for="m in items"
         :key="m._id"
-        :class="[
-          'p-4 rounded-xl border shadow-sm transition-colors duration-700',
-          m.status === 'finalized' ? 'bg-gray-200' : 'bg-white',
-          highlights[m._id] && 'bg-green-100 ring-1 ring-green-300'
-        ]"
-      >
-        <div class="flex items-center justify-between">
-          <div class="text-sm opacity-60">
-            {{ viewDate(m) }}
-          </div>
-          <div class="flex items-center gap-2">
-            <button
-              v-if="m.canEdit"
-              type="button"
-              @click="removeMatch(m._id as UUID)"
-              class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
-            >
-              {{ t('matches.delete') }}
-            </button>
-            <router-link
-              :to="`/match/${m._id}?group=${selectedGroup}`"
-              class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-gray-800 text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400/50 transition-colors"
-            >
-              {{ t('matches.open') }}
-            </router-link>
-          </div>
-        </div>
-      </div>
+        :match="m"
+        :highlight="highlights[m._id]"
+        :selected-group="selectedGroup"
+        :can-delete="true"
+        @remove="removeMatch"
+      />
     </TransitionGroup>
   </div>
 </template>
