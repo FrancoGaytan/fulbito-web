@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
+import { t } from '@/localizations';
 import { useRoute } from "vue-router";
 import * as matchesApi from "../lib/matches.service";
 import { usePlayers } from "../stores/players";
@@ -42,7 +43,7 @@ async function hydrateMyVotes() {
     if (mv.ratingApplied) current.value.ratingApplied = true as any;
     if (mv.ratingChanges) current.value.ratingChanges = mv.ratingChanges as any;
   } catch (e) {
-    console.warn('No se pudo cargar mis votos', e);
+  console.warn(t('matchDetail.voteError'), e);
   }
 }
 
@@ -144,7 +145,7 @@ async function votePlayer(playerId: UUID, vote: 'up' | 'neutral' | 'down') {
     await hydrateMyVotes();
   } catch (e: any) {
     console.error(e);
-    alert(e?.message || 'No se pudo enviar el voto');
+  alert(e?.message || t('matchDetail.voteError'));
   }
 }
 
@@ -152,7 +153,7 @@ async function applyRatingsNow() {
   if (!current.value) return;
   if (!canApply.value) return;
   // Opcional: confirmar (especialmente si más adelante tenemos gating multi-usuario)
-  if (!window.confirm('¿Aplicar ratings ahora? Esto cerrará la votación para todos.')) return;
+  if (!window.confirm(t('matchDetail.confirmApply'))) return;
   applyingRatings.value = true;
   try {
     const res = await matchesApi.applyRatings(current.value._id);
@@ -161,8 +162,8 @@ async function applyRatingsNow() {
     localChanges.value = res.changes;
     await hydrateMyVotes();
   } catch (e: any) {
-    console.error(e);
-    alert(e?.message || 'No se pudieron aplicar los ratings');
+  console.error(e);
+  alert(e?.message || t('matchDetail.applyError'));
   } finally {
     applyingRatings.value = false;
   }
@@ -177,24 +178,24 @@ async function applyRatingsNow() {
             <span class="absolute inset-0 rounded-full border-4 border-indigo-200"></span>
             <span class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></span>
           </div>
-          <p class="text-sm font-medium text-gray-700">Cargando partido…</p>
+          <p class="text-sm font-medium text-gray-700">{{ t('matchDetail.loading') }}</p>
         </div>
       </div>
       <template v-if="!loading && current">
     <div class="flex items-center gap-3">
-      <h1 class="text-2xl font-semibold">Partido</h1>
+  <h1 class="text-2xl font-semibold">{{ t('matchDetail.title') }}</h1>
       <button
         class="ml-auto px-4 py-2 rounded bg-black text-white disabled:opacity-50"
           :disabled="loadingGen || !current || isFinalized || !current.canEdit"
         @click="autoTeams"
       >
-          {{ loadingGen ? "Generando…" : current.canEdit ? "Generar equipos" : "Sin permiso" }}
+          {{ loadingGen ? t('matchDetail.generating') : current.canEdit ? t('matchDetail.generateTeams') : t('matchDetail.noPermission') }}
       </button>
     </div>
 
     <div v-if="hasTeams" class="grid md:grid-cols-2 gap-4">
       <div class="bg-white p-4 rounded-xl shadow border space-y-2">
-        <h2 class="font-medium">Equipo A (claro)</h2>
+  <h2 class="font-medium">{{ t('matchDetail.teamA') }}</h2>
         <ul class="space-y-1">
           <li v-for="p in teamA" :key="p.id" class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-gray-400" />
@@ -203,7 +204,7 @@ async function applyRatingsNow() {
         </ul>
       </div>
       <div class="bg-white p-4 rounded-xl shadow border space-y-2">
-        <h2 class="font-medium">Equipo B (oscuro)</h2>
+  <h2 class="font-medium">{{ t('matchDetail.teamB') }}</h2>
         <ul class="space-y-1">
           <li v-for="p in teamB" :key="p.id" class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full bg-gray-400" />
@@ -215,9 +216,9 @@ async function applyRatingsNow() {
 
     <!-- 2) Si TODAVÍA NO hay equipos, muestro "Jugadores anotados" -->
     <div v-else class="bg-white p-4 rounded-xl shadow border space-y-2">
-      <h2 class="font-medium">Jugadores anotados</h2>
+  <h2 class="font-medium">{{ t('matchDetail.signedPlayers') }}</h2>
       <p class="text-sm text-gray-500" v-if="participants.length === 0">
-        Este partido no tiene jugadores anotados todavía.
+  {{ t('matchDetail.noSignedPlayers') }}
       </p>
       <ul v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
         <li
@@ -233,7 +234,7 @@ async function applyRatingsNow() {
 
     <!-- ─────── Resultado / Finalización ─────── -->
     <div class="bg-white p-4 rounded-xl shadow border">
-      <h2 class="font-medium mb-3">Resultado</h2>
+  <h2 class="font-medium mb-3">{{ t('matchDetail.result') }}</h2>
 
       <!-- ya finalizado -->
       <template v-if="isFinalized">
@@ -241,7 +242,7 @@ async function applyRatingsNow() {
           {{ finalScore.a }} — {{ finalScore.b }}
         </div>
         <div class="text-xs opacity-60" v-if="finalizedAt">
-          Finalizado: {{ finalizedAt }}
+          {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
         </div>
       </template>
 
@@ -266,29 +267,29 @@ async function applyRatingsNow() {
             class="ml-3 px-4 py-2 rounded bg-black text-white disabled:opacity-50"
             :disabled="isFinalized || !hasTeams || !current?.canEdit"
           >
-            Finalizar
+            {{ t('matchDetail.finalize') }}
           </button>
         </div>
-        <p v-if="!hasTeams" class="mt-2 text-xs text-red-600">Primero generá los equipos para poder finalizar.</p>
+  <p v-if="!hasTeams" class="mt-2 text-xs text-red-600">{{ t('matchDetail.needTeamsFirst') }}</p>
       </template>
     </div>
 
     <!-- ─────── Feedback / Calificación Jugadores ─────── -->
     <div v-if="isFinalized" class="bg-white p-4 rounded-xl shadow border space-y-4">
       <template v-if="!ratingApplied">
-        <h2 class="font-medium flex items-center gap-2">Calificar jugadores
+  <h2 class="font-medium flex items-center gap-2">{{ t('matchDetail.ratePlayers') }}
           <span class="text-xs font-normal text-gray-500" v-if="playersForRating.length">({{ playersForRating.length }} pendientes)</span>
         </h2>
         <p v-if="playersForRating.length === 0" class="text-sm text-gray-500">
-          Todos calificados. Ahora podés aplicar los ratings.
+          {{ t('matchDetail.allRated') }}
         </p>
         <ul v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
           <li v-for="p in playersForRating" :key="p.id" class="flex items-center justify-between gap-2 border rounded px-3 py-2">
             <span class="truncate">{{ p.name }}</span>
             <div class="flex items-center gap-1">
-              <button @click="votePlayer(p.id as UUID, 'down')" class="w-8 h-8 flex items-center justify-center rounded bg-red-100 text-red-600 hover:bg-red-200" title="Mal desempeño">👎</button>
-              <button @click="votePlayer(p.id as UUID, 'neutral')" class="w-8 h-8 flex items-center justify-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200" title="Neutral">😐</button>
-              <button @click="votePlayer(p.id as UUID, 'up')" class="w-8 h-8 flex items-center justify-center rounded bg-green-100 text-green-600 hover:bg-green-200" title="Buen desempeño">👍</button>
+              <button @click="votePlayer(p.id as UUID, 'down')" class="w-8 h-8 flex items-center justify-center rounded bg-red-100 text-red-600 hover:bg-red-200" :title="t('matchDetail.bad')">👎</button>
+              <button @click="votePlayer(p.id as UUID, 'neutral')" class="w-8 h-8 flex items-center justify-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200" :title="t('matchDetail.neutral')">😐</button>
+              <button @click="votePlayer(p.id as UUID, 'up')" class="w-8 h-8 flex items-center justify-center rounded bg-green-100 text-green-600 hover:bg-green-200" :title="t('matchDetail.good')">👍</button>
             </div>
           </li>
         </ul>
@@ -299,26 +300,26 @@ async function applyRatingsNow() {
             :disabled="applyingRatings"
             class="px-4 py-2 rounded bg-black text-white disabled:opacity-40"
           >
-            {{ applyingRatings ? 'Aplicando…' : 'Aplicar ratings' }}
+            {{ applyingRatings ? t('matchDetail.applying') : t('matchDetail.apply') }}
           </button>
           <p v-else-if="playersForRating.length === 0" class="text-xs text-gray-500">
-            Esperando que el organizador aplique los ratings…
+            {{ t('matchDetail.waitingOrganizer') }}
           </p>
           <p v-else class="text-xs text-gray-500">
-            Votá a los jugadores restantes para cerrar tu parte de la votación.
+            {{ t('matchDetail.pendingYourVotes') }}
           </p>
         </div>
       </template>
       <template v-else>
-        <h2 class="font-medium">Cambios de rating</h2>
-        <p class="text-sm text-gray-500" v-if="(current?.ratingChanges?.length || 0) === 0">Sin cambios registrados.</p>
+  <h2 class="font-medium">{{ t('matchDetail.ratingChanges') }}</h2>
+  <p class="text-sm text-gray-500" v-if="(current?.ratingChanges?.length || 0) === 0">{{ t('matchDetail.noChanges') }}</p>
         <table v-else class="w-full text-sm border-t">
           <thead>
             <tr class="text-left">
-              <th class="py-2 pr-2">Jugador</th>
-              <th class="py-2 pr-2">Antes</th>
-              <th class="py-2 pr-2">Después</th>
-              <th class="py-2 pr-2">Δ</th>
+              <th class="py-2 pr-2">{{ t('matchDetail.colPlayer') }}</th>
+              <th class="py-2 pr-2">{{ t('matchDetail.colBefore') }}</th>
+              <th class="py-2 pr-2">{{ t('matchDetail.colAfter') }}</th>
+              <th class="py-2 pr-2">{{ t('matchDetail.colDelta') }}</th>
             </tr>
           </thead>
           <tbody>

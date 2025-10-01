@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, reactive } from 'vue'
+import { t } from '@/localizations'
 import CenteredLoader from '../components/CenteredLoader.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
@@ -49,9 +50,9 @@ onMounted(async () => {
     if (local) {
       player.value = local as any
       loadEditableAbilities(local as any)
-      error.value = (e?.message || 'No se pudo refrescar desde el backend') + '\n(Mostrando datos locales)'
+      error.value = (e?.message || t('playerDetail.refreshFallback')) + '\n' + t('playerDetail.showingLocal')
     } else {
-      error.value = e?.message || 'No se pudo cargar el jugador'
+      error.value = e?.message || t('playerDetail.loadError')
     }
   } finally {
     loading.value = false
@@ -77,7 +78,7 @@ async function saveSkills() {
     player.value = updated
     loadEditableAbilities(updated)
   } catch (e: any) {
-    error.value = e?.message || 'No se pudo guardar'
+  error.value = e?.message || t('playerDetail.saveError')
   } finally {
     saving.value = false
   }
@@ -85,11 +86,11 @@ async function saveSkills() {
 </script>
 
 <template>
-  <CenteredLoader v-if="loading" label="Cargando jugador…" />
+  <CenteredLoader v-if="loading" :label="t('playerDetail.loading')" />
   <div v-else class="space-y-6">
     <div class="flex flex-col gap-3">
-      <button @click="router.back()" class="text-sm text-gray-600 hover:text-black flex">← Volver</button>
-      <h1 class="text-2xl font-semibold">Perfil del Jugador</h1>
+  <button @click="router.back()" class="text-sm text-gray-600 hover:text-black flex">{{ t('playerDetail.back') }}</button>
+  <h1 class="text-2xl font-semibold">{{ t('playerDetail.title') }}</h1>
     </div>
 
     <div v-if="error" class="text-sm text-red-600 whitespace-pre-line">{{ error }}</div>
@@ -98,20 +99,20 @@ async function saveSkills() {
         <div class="flex items-center gap-3 flex-wrap">
           <h2 class="text-xl font-medium">{{ player.name }}</h2>
           <span v-if="player.nickname" class="text-gray-500">@{{ player.nickname }}</span>
-          <span v-if="player.userId === currentUserId" class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded">Mi perfil</span>
-          <span v-else-if="player.userId" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-2 py-0.5 rounded">Asignado</span>
+          <span v-if="player.userId === currentUserId" class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded">{{ t('playerDetail.myProfile') }}</span>
+          <span v-else-if="player.userId" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{{ t('playerDetail.claimed') }}</span>
         </div>
-        <div class="text-sm">Partidos jugados: <strong>{{ player.gamesPlayed ?? 0 }}</strong></div>
-        <div class="text-sm" v-if="player.rating !== undefined">Rating: <strong>{{ player.rating }}</strong></div>
-        <div class="text-xs text-gray-400" v-if="player.createdAt">Creado: {{ new Date(player.createdAt).toLocaleString() }}</div>
-        <div class="text-xs text-gray-400" v-if="player.updatedAt">Actualizado: {{ new Date(player.updatedAt).toLocaleString() }}</div>
+  <div class="text-sm">{{ t('playerDetail.gamesPlayed') }} <strong>{{ player.gamesPlayed ?? 0 }}</strong></div>
+  <div class="text-sm" v-if="player.rating !== undefined">{{ t('playerDetail.rating') }} <strong>{{ player.rating }}</strong></div>
+  <div class="text-xs text-gray-400" v-if="player.createdAt">{{ t('playerDetail.createdAt') }} {{ new Date(player.createdAt).toLocaleString() }}</div>
+  <div class="text-xs text-gray-400" v-if="player.updatedAt">{{ t('playerDetail.updatedAt') }} {{ new Date(player.updatedAt).toLocaleString() }}</div>
       </div>
 
       <!-- Habilidades -->
       <div class="bg-white p-5 rounded-xl shadow border space-y-4">
         <div class="flex items-center gap-3">
-          <h2 class="font-medium">Skills</h2>
-          <span v-if="!canEdit" class="text-xs text-gray-500">Solo el dueño puede editar</span>
+          <h2 class="font-medium">{{ t('playerDetail.skills') }}</h2>
+          <span v-if="!canEdit" class="text-xs text-gray-500">{{ t('playerDetail.onlyOwner') }}</span>
         </div>
         <div class="grid md:grid-cols-2 gap-6">
           <div class="space-y-3">
@@ -135,9 +136,9 @@ async function saveSkills() {
             </div>
           </div>
         </div>
-        <p class="text-xs text-gray-500">0 = no informar</p>
+  <p class="text-xs text-gray-500">{{ t('playerDetail.zeroHint') }}</p>
         <div class="pt-2 border-t" v-if="canEdit">
-          <button @click="saveSkills" :disabled="saving" class="px-4 py-2 rounded bg-black text-white disabled:opacity-50">{{ saving ? 'Guardando…' : 'Guardar cambios' }}</button>
+          <button @click="saveSkills" :disabled="saving" class="px-4 py-2 rounded bg-black text-white disabled:opacity-50">{{ saving ? t('playerDetail.saving') : t('playerDetail.save') }}</button>
         </div>
         <p v-if="error" class="text-xs text-red-600">{{ error }}</p>
       </div>

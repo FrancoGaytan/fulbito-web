@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
+import { t } from '@/localizations';
 import CenteredLoader from '../components/CenteredLoader.vue';
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
@@ -93,28 +94,28 @@ async function removeGroup(id: UUID) {
     if (panelFor.value === id) panelFor.value = "";
   } catch (e) {
     console.error(e);
-    alert("No se pudo eliminar el grupo");
+  alert(t('groups.deleteError'));
   }
 }
 </script>
 
 <template>
-  <CenteredLoader v-if="loading" label="Cargando grupos…" />
+  <CenteredLoader v-if="loading" :label="t('groups.loading')" />
   <template v-else>
   <!-- Crear grupo -->
   <div class="bg-white border rounded-xl p-4 mb-6">
-    <h2 class="text-lg font-semibold mb-3">Crear grupo</h2>
+  <h2 class="text-lg font-semibold mb-3">{{ t('groups.createTitle') }}</h2>
     <div class="grid md:grid-cols-3 gap-3">
       <input
         v-model="gName"
         type="text"
-        placeholder="Nombre del grupo"
+  :placeholder="t('groups.namePlaceholder')"
         class="border rounded px-3 py-2 w-full"
       />
       <input
         v-model="gDesc"
         type="text"
-        placeholder="Descripción (opcional)"
+  :placeholder="t('groups.descPlaceholder')"
         class="border rounded px-3 py-2 w-full"
       />
       <button
@@ -122,7 +123,7 @@ async function removeGroup(id: UUID) {
         :disabled="!gName.trim() || creating"
         @click="createNewGroup"
       >
-        {{ creating ? "Creando…" : "Crear grupo" }}
+  {{ creating ? t('groups.creating') : t('groups.create') }}
       </button>
     </div>
   </div>
@@ -142,11 +143,11 @@ async function removeGroup(id: UUID) {
       <div class="flex items-center gap-3">
         <h2 class="font-medium text-lg">{{ g.name }}</h2>
         <div class="flex items-center gap-2">
-          <span v-if="g.isOwner" class="text-[10px] uppercase tracking-wide bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">Owner</span>
-          <span v-else-if="g.isMember" class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded">Miembro</span>
+          <span v-if="g.isOwner" class="text-[10px] uppercase tracking-wide bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">{{ t('groups.owner') }}</span>
+          <span v-else-if="g.isMember" class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded">{{ t('groups.member') }}</span>
         </div>
         <span class="ml-auto text-sm text-gray-500">
-          {{ memberIdsFromAny(g).length }} jugadores
+          {{ memberIdsFromAny(g).length }} {{ t('groups.playersSuffix') }}
         </span>
       </div>
 
@@ -166,18 +167,18 @@ async function removeGroup(id: UUID) {
           :class="g.canEdit ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
           :disabled="!g.canEdit"
           @click="openPanel(g._id)"
-          :title="g.canEdit ? 'Agregar jugadores' : 'Solo el owner puede agregar jugadores'"
+          :title="g.canEdit ? t('groups.addPlayers') : t('groups.addPlayersTitle')"
         >
-          Agregar jugadores
+          {{ t('groups.addPlayers') }}
         </button>
         <button
           v-if="g.canEdit"
           type="button"
           @click="removeGroup(g._id as UUID)"
           class="ml-2 px-3 py-1 text-s rounded bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
-          title="Eliminar grupo"
+          :title="t('groups.deleteTitle')"
         >
-          Eliminar
+          {{ t('groups.delete') }}
         </button>
       </div>
 
@@ -187,14 +188,14 @@ async function removeGroup(id: UUID) {
           <input
             v-model="search"
             type="text"
-            placeholder="Buscar jugador…"
+            :placeholder="t('groups.searchPlayer')"
             class="border rounded px-3 py-2 w-full"
           />
           <button
             class="px-2 py-2 text-xs border rounded leading-none"
             @click="selected = filtered.map((p) => p._id as UUID)"
           >
-            Seleccionar todo
+            {{ t('groups.selectAll') }}
           </button>
         </div>
 
@@ -215,10 +216,10 @@ async function removeGroup(id: UUID) {
             :disabled="selected.length === 0"
             @click="addSelected"
           >
-            Agregar {{ selected.length }}
+            {{ t('groups.addCount') }} {{ selected.length }}
           </button>
           <button class="px-3 py-2 border rounded" @click="panelFor = ''">
-            Cerrar
+            {{ t('groups.close') }}
           </button>
         </div>
       </div>

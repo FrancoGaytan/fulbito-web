@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from "vue";
+import { t } from '@/localizations';
 import CenteredLoader from '../components/CenteredLoader.vue';
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
@@ -85,7 +86,7 @@ async function createMatch() {
 function viewDate(m: Match) {
   const d: string | undefined =
     m.scheduledAt ?? (m as any).date ?? (m as any).createdAt;
-  return d ? new Date(d).toLocaleString() : "Sin fecha";
+  return d ? new Date(d).toLocaleString() : t('matches.noDate');
 }
 
 async function removeMatch(id: UUID) {
@@ -94,19 +95,19 @@ async function removeMatch(id: UUID) {
     items.value = items.value.filter((m) => m._id !== id);
   } catch (e) {
     console.error(e);
-    alert("No se pudo eliminar el partido");
+  alert(t('matches.deleteError'));
   }
 }
 </script>
 
 <template>
-  <CenteredLoader v-if="loading" label="Cargando partidos…" />
+  <CenteredLoader v-if="loading" :label="t('matches.loading')" />
   <div v-else class="space-y-6">
     <div class="bg-white p-4 rounded-xl border space-y-3">
       <div class="grid md:grid-cols-[1fr,auto,auto] gap-3 items-center">
         <!-- Grupo -->
         <select v-model="selectedGroup" class="border rounded px-3 py-2">
-          <option value="" disabled>Elegí un grupo</option>
+          <option value="" disabled>{{ t('matches.chooseGroup') }}</option>
           <option v-for="g in groups.items" :key="g._id" :value="g._id">
             {{ g.name }}
           </option>
@@ -127,7 +128,7 @@ async function removeMatch(id: UUID) {
           @click="createMatch"
           title="" :data-tip="!meta?.canCreate ? 'No tenés permiso para crear partidos en este grupo' : ''"
         >
-          Crear partido
+          {{ t('matches.create') }}
         </button>
       </div>
 
@@ -141,13 +142,9 @@ async function removeMatch(id: UUID) {
           <input type="checkbox" :value="p._id" v-model="selectedPlayers" />
           <span>{{ p.name }}</span>
         </label>
-        <p v-if="groupMembers.length === 0" class="text-sm text-gray-500">
-          Este grupo no tiene jugadores todavía.
-        </p>
+        <p v-if="groupMembers.length === 0" class="text-sm text-gray-500">{{ t('matches.groupNoPlayers') }}</p>
       </div>
-      <p v-else class="text-sm text-gray-500">
-        Elegí un grupo para ver sus jugadores.
-      </p>
+      <p v-else class="text-sm text-gray-500">{{ t('matches.selectGroupSeePlayers') }}</p>
     </div>
 
     <!-- Listado de partidos con transición -->
@@ -177,13 +174,13 @@ async function removeMatch(id: UUID) {
               @click="removeMatch(m._id as UUID)"
               class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
             >
-              Eliminar
+              {{ t('matches.delete') }}
             </button>
             <router-link
               :to="`/match/${m._id}?group=${selectedGroup}`"
               class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-gray-800 text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400/50 transition-colors"
             >
-              Abrir
+              {{ t('matches.open') }}
             </router-link>
           </div>
         </div>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, inject } from 'vue'
+import { t } from '@/localizations'
 import { useRouter } from 'vue-router'
 import { register as apiRegister } from '../lib/auth.service'
 import { useAuth } from '../stores/auth'
@@ -29,7 +30,7 @@ async function submit() {
       auth.token = token
       if (autoRedirect.value) router.replace('/')
     } else {
-      error.value = 'Registro sin token en la respuesta'
+  error.value = t('register.missingToken')
     }
   } catch (e: any) {
     console.error('Register error', e)
@@ -37,11 +38,11 @@ async function submit() {
     const status = e?.status || e?.code || e?.response?.status
     const msg: string = e?.message || ''
     if (status === 409 || /E11000|duplicate/i.test(msg)) {
-      const friendly = 'Ya existe un usuario registrado con ese email'
+  const friendly = t('register.duplicateEmail')
       error.value = friendly
       pushToast?.(friendly, 'error')
     } else {
-      error.value = msg || 'Error de registro'
+  error.value = msg || t('register.error')
       if (msg) pushToast?.(msg, 'error')
     }
   } finally {
@@ -58,29 +59,27 @@ async function submit() {
           <img src="/src/assets/images/it-football.svg" alt="Fulbito Devs" class="w-full rounded-2xl shadow-lg ring-1 ring-black/10" />
           <div class="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-600/20 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition" />
         </div>
-        <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-fuchsia-600">Sumate al equipo.</h2>
-        <p class="text-sm text-gray-600 leading-relaxed max-w-sm">
-          Creá tu cuenta, reclamá tu jugador y empezá a sumar minutos y rating en cada partido.
-        </p>
+        <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-fuchsia-600">{{ t('register.heroTitle') }}</h2>
+        <p class="text-sm text-gray-600 leading-relaxed max-w-sm">{{ t('register.heroCopy') }}</p>
       </div>
       <form @submit.prevent="submit" class="w-full max-w-sm mx-auto bg-white p-6 rounded-xl shadow border space-y-4">
         <div class="space-y-1">
-          <h1 class="text-xl font-semibold tracking-tight">Crear cuenta</h1>
-          <p class="text-xs text-gray-500">Configura tu acceso para participar de los partidos.</p>
+          <h1 class="text-xl font-semibold tracking-tight">{{ t('register.title') }}</h1>
+          <p class="text-xs text-gray-500">{{ t('register.subtitle') }}</p>
         </div>
         <div class="space-y-3">
           <div>
-            <input v-model="email" type="email" placeholder="Email" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+            <input v-model="email" type="email" :placeholder="t('register.emailPlaceholder')" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
           <div>
-            <input v-model="password" type="password" placeholder="Contraseña" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+            <input v-model="password" type="password" :placeholder="t('register.passwordPlaceholder')" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
           </div>
           <div class="flex items-center gap-2 text-xs select-none">
             <input id="redir" type="checkbox" v-model="autoRedirect" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-            <label for="redir">Redirigir automáticamente</label>
+            <label for="redir">{{ t('register.autoRedirect') }}</label>
           </div>
           <button :disabled="loading" class="w-full px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium shadow hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
-            {{ loading ? 'Creando…' : 'Registrarme' }}
+            {{ loading ? t('register.actionLoading') : t('register.action') }}
           </button>
           <p v-if="error" class="text-red-600 text-xs">{{ error }}</p>
         </div>
@@ -88,7 +87,7 @@ async function submit() {
           <summary class="cursor-pointer">Debug response</summary>
           <pre class="whitespace-pre-wrap break-all">{{ debug }}</pre>
         </details>
-        <p class="text-xs text-center text-gray-600">¿Ya tenés cuenta? <router-link to="/login" class="underline font-medium">Ingresá</router-link></p>
+  <p class="text-xs text-center text-gray-600">{{ t('register.haveAccount') }} <router-link to="/login" class="underline font-medium">{{ t('register.loginCta') }}</router-link></p>
       </form>
     </div>
   </div>

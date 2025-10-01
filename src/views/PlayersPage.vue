@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
+import { t } from '@/localizations'
 import CenteredLoader from '../components/CenteredLoader.vue'
 import { localStorageKeys } from '../utils/localStorageKeys'
 import { useRouter } from 'vue-router'
@@ -73,7 +74,7 @@ async function claim(p: any) {
     const idx = players.items.findIndex(x => x._id === p._id)
     if (idx >= 0) players.items[idx] = updated
   } catch (e: any) {
-    alert(e?.message || 'No se pudo reclamar el jugador')
+  alert(e?.message || t('players.claimError'))
   }
 }
 
@@ -83,7 +84,7 @@ async function unclaim(p: any) {
     const idx = players.items.findIndex(x => x._id === p._id)
     if (idx >= 0) players.items[idx] = updated
   } catch (e: any) {
-    alert(e?.message || 'No se pudo desvincular el jugador')
+  alert(e?.message || t('players.unclaimError'))
   }
 }
 
@@ -93,23 +94,23 @@ async function removePlayer(id: string) {
     players.items = players.items.filter(p => p._id !== id)
   } catch (e) {
     console.error(e)
-    alert('No se pudo eliminar el jugador')
+  alert(t('players.deleteError'))
   }
 }
 </script>
 
 <template>
-<CenteredLoader v-if="loading" label="Cargando jugadores…" />
+<CenteredLoader v-if="loading" :label="t('players.loading')" />
 <div v-else class="space-y-6">
-  <h1 class="text-2xl font-semibold">Jugadores</h1>
+  <h1 class="text-2xl font-semibold">{{ t('players.title') }}</h1>
 
   <div class="bg-white p-4 rounded-xl shadow border space-y-4">
-    <h2 class="font-medium">Crear jugador</h2>
+  <h2 class="font-medium">{{ t('players.createTitle') }}</h2>
 
     <div class="grid md:grid-cols-3 gap-3">
-      <input v-model="name" placeholder="Nombre" class="border rounded px-3 py-2" />
-      <input v-model="nickname" placeholder="Apodo (opcional)" class="border rounded px-3 py-2" />
-      <button @click="createPlayer" class="px-4 py-2 rounded bg-black text-white">Crear</button>
+  <input v-model="name" :placeholder="t('players.name')" class="border rounded px-3 py-2" />
+  <input v-model="nickname" :placeholder="t('players.nickname')" class="border rounded px-3 py-2" />
+  <button @click="createPlayer" class="px-4 py-2 rounded bg-black text-white">{{ t('players.create') }}</button>
     </div>
 
     <div class="grid md:grid-cols-2 gap-6">
@@ -144,7 +145,7 @@ async function removePlayer(id: string) {
       </div>
     </div>
   </div>
-  <span class="text-xs text-gray-500">0 = no informar</span>
+  <span class="text-xs text-gray-500">{{ t('players.zeroHint') }}</span>
 </div>
 
     <!-- listado (muestra badges con los scores) -->
@@ -162,25 +163,25 @@ async function removePlayer(id: string) {
         </button>
         <div class="font-medium pr-8 flex items-center gap-2">
           <span>{{ p.name }}</span>
-          <span v-if="(p.gamesPlayed ?? 0) === 0" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">Nuevo</span>
+          <span v-if="(p.gamesPlayed ?? 0) === 0" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">{{ t('players.new') }}</span>
           <template v-if="p.userId && p.userId === currentUserId">
-            <span class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">Mi perfil</span>
+            <span class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{{ t('players.myProfile') }}</span>
             <button
               type="button"
               @click="unclaim(p)"
               class="text-[10px] uppercase tracking-wide bg-red-600 text-white px-2 py-0.5 rounded hover:bg-red-500"
-            >Desvincular</button>
+            >{{ t('players.unclaim') }}</button>
           </template>
-          <span v-else-if="p.userId" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">Asignado</span>
+          <span v-else-if="p.userId" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ t('players.claimed') }}</span>
           <button
             v-else-if="!myClaimedPlayerId"
             @click="claim(p)"
             class="text-[10px] uppercase tracking-wide bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-500"
-          >Vincularme</button>
+          >{{ t('players.claim') }}</button>
         </div>
         <div class="text-sm text-gray-500" v-if="p.nickname">@{{ p.nickname }}</div>
         <div v-if="p.gamesPlayed !== undefined" class="text-xs text-gray-500">
-          Partidos jugados: <span class="font-medium">{{ p.gamesPlayed }}</span>
+          {{ t('players.gamesPlayed') }} <span class="font-medium">{{ p.gamesPlayed }}</span>
         </div>
         <div class="flex flex-wrap gap-1">
           <span
