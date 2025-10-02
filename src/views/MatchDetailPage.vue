@@ -188,8 +188,9 @@ async function applyRatingsNow() {
         class="ml-auto px-4 py-2 rounded bg-black text-white disabled:opacity-50"
           :disabled="loadingGen || !current || isFinalized || !current.canEdit"
         @click="autoTeams"
+        v-if="current.canEdit"
       >
-          {{ loadingGen ? t('matchDetail.generating') : current.canEdit ? t('matchDetail.generateTeams') : t('matchDetail.noPermission') }}
+          {{ loadingGen ? t('matchDetail.generating') : t('matchDetail.generateTeams')}}
       </button>
     </div>
 
