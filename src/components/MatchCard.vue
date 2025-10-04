@@ -2,11 +2,15 @@
 import { t } from '@/localizations';
 import type { Match, UUID } from '@/types';
 
-const props = defineProps<{ match: Match; highlight?: boolean; selectedGroup?: string | UUID | ''; canDelete?: boolean; }>();
+/** Summary view of a match with open / delete actions and highlight state. */
+const props = defineProps<{ match: Match; highlight?: boolean; selectedGroup?: string | UUID | ''; canDelete?: boolean }>();
+/** Emits: remove(id) → parent deletes match */
 const emit = defineEmits<{ (e: 'remove', id: UUID): void }>();
 
+/** Ask parent to remove the match if allowed */
 function remove() { if (props.canDelete) emit('remove', props.match._id as UUID); }
 
+/** Resolve display date choosing scheduledAt fallbacking to legacy fields. */
 function viewDate(m: Match) {
   const d: string | undefined = m.scheduledAt ?? (m as any).date ?? (m as any).createdAt;
   return d ? new Date(d).toLocaleString() : t('matches.noDate');

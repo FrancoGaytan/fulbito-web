@@ -76,10 +76,42 @@ pushToast('Ya existe un usuario con ese email', 'error');
 
 ## Scripts
 
-```
+```bash
 npm install
 npm run dev
 ```
+
+## Tests Unitarios
+
+Infraestructura configurada con Vitest + Vue Test Utils + jsdom.
+
+Scripts:
+
+```bash
+npm run test          # Ejecuta una pasada
+npm run test:watch    # Modo interactivo
+npm run test:coverage # Con reporte de cobertura
+```
+
+Pasos iniciales:
+
+1. Ejecutar `npm install` (añadí dependencias: vitest, @vue/test-utils, @testing-library/vue, jsdom).
+2. Asegurarte de que tu editor recargue la configuración TS (añadimos tipos de vitest en `tsconfig.app.json`).
+
+Ubicación actual de ejemplos:
+
+- `tests/players.store.test.ts`
+- `tests/matches.service.test.ts`
+
+Agregar tests nuevos en `tests/` (puede organizarse luego en `tests/unit` / `tests/component`).
+
+Buenas prácticas (ver también `AGENT.md`):
+
+- Mockear `httpService` para servicios.
+- Evitar asserts sobre clases CSS; preferir texto / resultado lógico.
+- Stores: usar `setActivePinia(createPinia())` en cada `beforeEach`.
+
+Cobertura excluye bootstraps (`main.ts`, tipos) según `vitest.config.ts`.
 
 ## Deploy (Vercel)
 

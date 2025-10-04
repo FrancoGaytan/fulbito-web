@@ -23,6 +23,10 @@ const editScoreA = ref<number | null>(null);
 const editScoreB = ref<number | null>(null);
 const updateResultError = ref<string | null>(null);
 
+/**
+ * Fetch match (within its group list) & hydrate votes on mount.
+ * @returns {Promise<void>} Resolves when initial data (players, match, votes) is loaded.
+ */
 onMounted(async () => {
   try {
     await players.fetch();
@@ -37,6 +41,12 @@ onMounted(async () => {
   }
 });
 
+/**
+ * Load current user voting state and rating changes if already applied.
+ * Populates myVotesState, localChanges and augments current match object with vote info.
+ * Safe to call multiple times; acts as a refresh.
+ * @returns {Promise<void>} Promise that settles after network call.
+ */
 async function hydrateMyVotes() {
   if (!current.value) return;
   try {
@@ -51,16 +61,33 @@ async function hydrateMyVotes() {
   }
 }
 
+/**
+ * Whether the match is finalized (result present or status flag set to 'finalized').
+ * @returns {boolean} True if there's a stored result or explicit finalized status.
+ */
 const isFinalized = computed(() => !!current.value?.result || current.value?.status === "finalized");
 
+/**
+ * Whether ratings have already been applied (either match-wide or reflected in myVotesState).
+ * @returns {boolean}
+ */
 const ratingApplied = computed(() => !!current.value?.ratingApplied || !!myVotesState.value?.ratingApplied);
 
 // Permisos para aplicar ratings: permitir si todavía no se aplicaron y el usuario es owner del match o del grupo
+/**
+ * Permission gate for applying ratings.
+ * Allows if ratings not yet applied and user can edit match or owns group/match.
+ * @returns {boolean}
+ */
 const canApply = computed(() => {
   if (ratingApplied.value) return false;
   return !!(current.value?.canEdit || meta.value?.isOwner || current.value?.isOwnerMatch);
 });
 
+/**
+ * Final score abstraction; when a persisted result exists it takes precedence, else live team scores.
+ * @returns {{ a: number; b: number }} Object containing team A and B numeric scores.
+ */
 const finalScore = computed(() => {
   const r = (current.value as any)?.result;
   const a = r?.scoreA ?? current.value?.teams?.[0]?.score ?? 0;
@@ -68,11 +95,20 @@ const finalScore = computed(() => {
   return { a, b };
 });
 
+/**
+ * Localized finalized datetime string for display.
+ * @returns {string} Locale formatted date-time or empty string if not finalized.
+ */
 const finalizedAt = computed(() => {
   const at = (current.value as any)?.result?.finalizedAt;
   return at ? new Date(at).toLocaleString() : "";
 });
 
+/**
+ * Enter edit mode for final result allowing update of stored scores.
+ * Preconditions: match exists, is finalized, ratings not applied.
+ * @returns {void}
+ */
 function startEditResult() {
   if (!current.value || !isFinalized.value || ratingApplied.value) return;
   editingResult.value = true;
@@ -81,6 +117,10 @@ function startEditResult() {
   updateResultError.value = null;
 }
 
+/**
+ * Exit result edit mode discarding any unpersisted edits and clearing errors.
+ * @returns {void}
+ */
 function cancelEditResult() {
   editingResult.value = false;
   editScoreA.value = null;
@@ -88,6 +128,11 @@ function cancelEditResult() {
   updateResultError.value = null;
 }
 
+/**
+ * Persist edited result via matchesApi.updateResult and update local state.
+ * Validates score refs are not null and clamps to >= 0.
+ * @returns {Promise<void>} Resolves after attempting save; sets updateResultError on failure.
+ */
 async function saveEditedResult() {
   if (!current.value || editScoreA.value == null || editScoreB.value == null) return;
   updateResultError.value = null;
@@ -100,6 +145,11 @@ async function saveEditedResult() {
   }
 }
 
+/**
+ * Finalize the match using current score inputs when teams exist and not already finalized.
+ * Also triggers a players store refresh to update ratings.
+ * @returns {Promise<void>}
+ */
 async function finish() {
   if (!current.value) return;
   if (isFinalized.value) return;
@@ -114,6 +164,10 @@ async function finish() {
 }
 
 // Equipos
+/**
+ * Whether there are at least two teams defined containing player entries.
+ * @returns {boolean}
+ */
 const hasTeams = computed(() => {
   const teams = (current.value as any)?.teams ?? [];
   if (!Array.isArray(teams) || teams.length < 2) return false;
@@ -122,16 +176,28 @@ const hasTeams = computed(() => {
   return total > 0;
 });
 
+/**
+ * Map participant player IDs to lightweight objects before teams are generated.
+ * @returns {{ id: string; name: string }[]}
+ */
 const participants = computed(() => {
   const ids = (current.value?.participants ?? []) as string[];
   return ids.map((pid) => ({ id: pid, name: players.nameById(pid) }));
 });
 
+/**
+ * Team A mapped with player names for display.
+ * @returns {{ id: string; name: string }[]}
+ */
 const teamA = computed(() => {
   const t = ((current.value as any)?.teams ?? [])[0];
   const ids: string[] = t?.players ?? [];
   return ids.map((id) => ({ id, name: players.nameById(id) }));
 });
+/**
+ * Team B mapped with player names for display.
+ * @returns {{ id: string; name: string }[]}
+ */
 const teamB = computed(() => {
   const t = ((current.value as any)?.teams ?? [])[1];
   const ids: string[] = t?.players ?? [];
@@ -139,6 +205,11 @@ const teamB = computed(() => {
 });
 
 
+/**
+ * Remaining players needing a vote from current user (excludes those already voted on).
+ * Returns empty list if match not finalized or ratings applied.
+ * @returns {{ id: string; name: string }[]}
+ */
 const playersForRating = computed(() => {
   if (!isFinalized.value || ratingApplied.value) return [] as { id: string; name: string }[];
   const merged: Record<string, { id: string; name: string }> = {};
@@ -148,6 +219,11 @@ const playersForRating = computed(() => {
   return Object.values(merged).filter((p) => !mySet.has(p.id));
 });
 
+/**
+ * Generate teams using AI assisted service with a time-based seed for variability.
+ * Requires edit permission on current match.
+ * @returns {Promise<void>}
+ */
 async function autoTeams() {
   if (!current.value || !current.value.canEdit) return;
   loadingGen.value = true;
@@ -165,6 +241,13 @@ async function autoTeams() {
 const scoreA = ref<number>(0);
 const scoreB = ref<number>(0);
 
+/**
+ * Cast a performance vote for a given player in the finalized match.
+ * Updates local myVotes and refreshes aggregate vote state.
+ * @param {UUID} playerId Player identifier being voted.
+ * @param {'up' | 'neutral' | 'down'} vote Vote value.
+ * @returns {Promise<void>}
+ */
 async function votePlayer(playerId: UUID, vote: 'up' | 'neutral' | 'down') {
   if (!current.value || ratingApplied.value) return;
   try {
@@ -180,6 +263,11 @@ async function votePlayer(playerId: UUID, vote: 'up' | 'neutral' | 'down') {
   }
 }
 
+/**
+ * Apply ratings (if permitted) once there are no remaining pending votes.
+ * Confirms with the user, then persists and hydrates local changes.
+ * @returns {Promise<void>}
+ */
 async function applyRatingsNow() {
   if (!current.value) return;
   if (!canApply.value) return;

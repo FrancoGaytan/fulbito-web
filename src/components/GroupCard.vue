@@ -3,40 +3,46 @@ import { computed } from 'vue';
 import { t } from '@/localizations';
 import type { UUID } from '@/types';
 
+/** Slim player representation used only for listing / selection */
 interface PlayerLite { _id: string; name: string }
 
-const props = defineProps<{
-  group: any;
-  isOpen: boolean;
-  memberIds: string[];
-  nameById: Record<string, string>;
-  filtered: PlayerLite[];
-  selected: UUID[];
-  search: string;
-}>();
+/**
+ * GroupCard displays a group summary + expandable panel to add players.
+ * Parent owns the data arrays; emits pure intent events.
+ */
+const props = defineProps<{ group: any; isOpen: boolean; memberIds: string[]; nameById: Record<string, string>; filtered: PlayerLite[]; selected: UUID[]; search: string }>();
 
-const emit = defineEmits<{
-  (e: 'open', id: UUID): void;
-  (e: 'close'): void;
-  (e: 'update:search', value: string): void;
-  (e: 'update:selected', value: UUID[]): void;
-  (e: 'add-selected'): void;
-  (e: 'remove', id: UUID): void;
-  (e: 'select-all'): void;
-}>();
+/** Emitted events (see parent handlers for side-effects) */
+const emit = defineEmits<{ (
+  e: 'open', id: UUID
+): void; (
+  e: 'close'
+): void; (
+  e: 'update:search', value: string
+): void; (
+  e: 'update:selected', value: UUID[]
+): void; (
+  e: 'add-selected'
+): void; (
+  e: 'remove', id: UUID
+): void; (
+  e: 'select-all'
+): void }>();
 
+/** Whether current user can mutate this group */
 const canEdit = computed(() => !!props.group?.canEdit);
 
+/** Toggle add-player panel respecting permissions */
 function togglePanel() {
   if (!canEdit.value) return;
   if (props.isOpen) emit('close'); else emit('open', props.group._id as UUID);
 }
-function onSearch(e: Event) {
-  emit('update:search', (e.target as HTMLInputElement).value);
-}
+/** Emit search string changes */
+function onSearch(e: Event) { emit('update:search', (e.target as HTMLInputElement).value); }
 function onSelectAll() { emit('select-all'); }
 function onAddSelected() { emit('add-selected'); }
 function closePanel() { emit('close'); }
+/** Ask parent to remove this group */
 function removeGroup() { if (canEdit.value) emit('remove', props.group._id as UUID); }
 </script>
 

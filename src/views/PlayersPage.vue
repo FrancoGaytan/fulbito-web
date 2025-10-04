@@ -10,6 +10,7 @@ import * as playersApi from '../lib/players.service'
 import { usePlayers } from '../stores/players'
 import { useGroups } from '../stores/groups'
 
+// Stores
 const players = usePlayers()
 const router = useRouter()
 const groups = useGroups()
@@ -31,6 +32,11 @@ function inc(key: AbilityKey) { abilityScores[key] = clamp((abilityScores[key] ?
 function dec(key: AbilityKey) { abilityScores[key] = clamp((abilityScores[key] ?? 0) - 1) }
 function normalize(key: AbilityKey) { abilityScores[key] = clamp(abilityScores[key]) }
 
+/**
+ * Create a new player with provided name/nickname & non-zero ability scores.
+ * Resets form fields on success.
+ * @returns {Promise<void>}
+ */
 async function createPlayer() {
   if (!name.value.trim()) return
   const payload: Partial<Record<AbilityKey, number>> = {}
@@ -47,6 +53,7 @@ async function createPlayer() {
 }
 
 const allPlayers = ref(players.items)
+/** Load initial players & groups data, populating list */
 onMounted(async () => {
   loading.value = true
   try {
@@ -68,6 +75,11 @@ const currentUserId = computed(() => {
 const myClaimedPlayerId = computed(() => players.items.find(p => p.userId && p.userId === currentUserId.value)?._id || '')
 
 
+/**
+ * Claim a player for current user (if unclaimed).
+ * @param {any} p Player object from list.
+ * @returns {Promise<void>}
+ */
 async function claim(p: any) {
   if (p.userId) return
   try {
@@ -79,6 +91,11 @@ async function claim(p: any) {
   }
 }
 
+/**
+ * Unclaim a player (detach ownership) reverting to no user owner.
+ * @param {any} p Player object from list.
+ * @returns {Promise<void>}
+ */
 async function unclaim(p: any) {
   try {
     const updated = await playersApi.unclaimPlayer(p._id)
@@ -89,6 +106,11 @@ async function unclaim(p: any) {
   }
 }
 
+/**
+ * Delete player by id and remove from local store list.
+ * @param {string} id Player identifier.
+ * @returns {Promise<void>}
+ */
 async function removePlayer(id: string) {
   try {
     await playersApi.deletePlayer(id)

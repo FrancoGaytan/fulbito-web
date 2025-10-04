@@ -1,32 +1,53 @@
 <script setup lang="ts">
 import { t } from '@/localizations';
 import { abilityLabels, type AbilityKey } from '@/constants/abilities';
-import type { Player } from '@/types';
-import type { UUID } from '@/types';
+import type { Player, UUID } from '@/types';
 
+/**
+ * PlayerCard
+ * Presentational + interactive card for a single player.
+ * Shows ownership badges, games played, abilities and allows claim / unclaim / remove.
+ * Emits high level intent events so parent list manages data mutation.
+ */
 const props = defineProps<{ 
   player: Player; 
   currentUserId: string; 
   myClaimedPlayerId: string; 
 }>();
 
-const emit = defineEmits<{
-  (e: 'remove', id: UUID): void;
-  (e: 'claim', player: Player): void;
-  (e: 'unclaim', player: Player): void;
-  (e: 'open', player: Player): void;
-}>();
+/**
+ * Emitted events:
+ * - remove(id): request deletion of player
+ * - claim(player): user wants to claim this player profile
+ * - unclaim(player): user wants to detach ownership
+ * - open(player): card (non‑button) click to open detail view
+ */
+const emit = defineEmits<{ (
+  e: 'remove', id: UUID
+): void; (
+  e: 'claim', player: Player
+): void; (
+  e: 'unclaim', player: Player
+): void; (
+  e: 'open', player: Player
+): void }>();
 
+/** Root click handler (ignores inner button clicks) and emits open. */
 function onRootClick(e: MouseEvent) {
   const target = e.target as HTMLElement;
   if (target.closest('button')) return; // ignore clicks on buttons
   emit('open', props.player);
 }
+/** Request parent to remove this player */
 function remove() { emit('remove', props.player._id as UUID); }
+/** Request parent to assign current user */
 function claim() { emit('claim', props.player); }
+/** Request parent to unassign current user */
 function unclaim() { emit('unclaim', props.player); }
 
+/** Determine if player belongs to current user */
 const isMine = () => props.player.userId && props.player.userId === props.currentUserId;
+/** Whether player is claimed by any user */
 const isClaimed = () => !!props.player.userId;
 </script>
 
