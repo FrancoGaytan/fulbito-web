@@ -18,6 +18,10 @@ const loadingGen = ref(false);
 const applyingRatings = ref(false);
 const localChanges = ref<RatingChange[]>([]);
 const myVotesState = ref<MyVotesResponse | null>(null);
+const editingResult = ref(false);
+const editScoreA = ref<number | null>(null);
+const editScoreB = ref<number | null>(null);
+const updateResultError = ref<string | null>(null);
 
 onMounted(async () => {
   try {
@@ -68,6 +72,33 @@ const finalizedAt = computed(() => {
   const at = (current.value as any)?.result?.finalizedAt;
   return at ? new Date(at).toLocaleString() : "";
 });
+
+function startEditResult() {
+  if (!current.value || !isFinalized.value || ratingApplied.value) return;
+  editingResult.value = true;
+  editScoreA.value = finalScore.value.a;
+  editScoreB.value = finalScore.value.b;
+  updateResultError.value = null;
+}
+
+function cancelEditResult() {
+  editingResult.value = false;
+  editScoreA.value = null;
+  editScoreB.value = null;
+  updateResultError.value = null;
+}
+
+async function saveEditedResult() {
+  if (!current.value || editScoreA.value == null || editScoreB.value == null) return;
+  updateResultError.value = null;
+  try {
+    const updated = await matchesApi.updateResult(current.value._id, Math.max(0, editScoreA.value), Math.max(0, editScoreB.value));
+    current.value = updated;
+    editingResult.value = false;
+  } catch (e: any) {
+    updateResultError.value = e?.message || t('matchDetail.updateResultError');
+  }
+}
 
 async function finish() {
   if (!current.value) return;
@@ -239,12 +270,33 @@ async function applyRatingsNow() {
 
       <!-- ya finalizado -->
       <template v-if="isFinalized">
-        <div class="text-lg font-semibold">
-          {{ finalScore.a }} — {{ finalScore.b }}
-        </div>
-        <div class="text-xs opacity-60" v-if="finalizedAt">
-          {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
-        </div>
+        <!-- View mode -->
+        <template v-if="!editingResult">
+          <div class="flex items-center gap-3 flex-wrap">
+            <div class="text-lg font-semibold">
+              {{ finalScore.a }} — {{ finalScore.b }}
+            </div>
+            <button
+              v-if="current?.canEdit && !ratingApplied"
+              @click="startEditResult"
+              class="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50"
+            >{{ t('matchDetail.editResult') }}</button>
+          </div>
+          <div class="text-xs opacity-60" v-if="finalizedAt">
+            {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
+          </div>
+        </template>
+        <!-- Edit mode -->
+        <template v-else>
+          <div class="flex items-center gap-2">
+            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreA" />
+            <span class="opacity-60">—</span>
+            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreB" />
+            <button @click="saveEditedResult" class="px-3 py-1 rounded bg-black text-white text-xs">{{ t('matchDetail.updateResult') }}</button>
+            <button @click="cancelEditResult" class="px-3 py-1 rounded border text-xs">{{ t('matchDetail.cancel') }}</button>
+          </div>
+          <p v-if="updateResultError" class="text-xs text-red-600 mt-2">{{ updateResultError }}</p>
+        </template>
       </template>
 
       <!-- todavía no finalizado -->

@@ -32,6 +32,15 @@ export interface Player {
   userId?: UUID;
   createdAt?: string;
   updatedAt?: string;
+  stats?: PlayerStats;
+}
+
+export interface PlayerStats {
+  wins: number;
+  losses: number;
+  draws: number;
+  total: number;
+  error?: string;
 }
 
 // Groups

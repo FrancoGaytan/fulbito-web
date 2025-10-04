@@ -56,6 +56,11 @@ export const voteMatchPlayer = (
 export const finalize = (id: UUID, scoreA: number, scoreB: number) =>
   _post<Match>(`/matches/${id}/finalize`, { scoreA, scoreB });
 
+// Update already finalized result (allowed only if ratings not applied yet)
+// Backend expected to allow PATCH semantics; using method override
+export const updateResult = (id: UUID, scoreA: number, scoreB: number) =>
+  _post<Match>(`/matches/${id}/result?_method=PATCH`, { scoreA, scoreB });
+
 export const applyRatings = (id: UUID) =>
   _post<{ applied: number; changes: RatingChange[] }>(`/matches/${id}/apply-ratings`);
 
