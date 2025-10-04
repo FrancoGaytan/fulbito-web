@@ -59,6 +59,21 @@ onMounted(async () => {
   }
 })
 
+// -------- Stats Computed --------
+const stats = computed(() => player.value?.stats)
+const hasStats = computed(() => !!stats.value && typeof stats.value.total === 'number')
+const winRate = computed(() => {
+  if (!stats.value || !stats.value.total) return 0
+  return +(100 * (stats.value.wins / stats.value.total)).toFixed(1)
+})
+function pct(part: number, total: number) {
+  if (!total) return 0
+  return +(100 * (part / total)).toFixed(2)
+}
+const winsPct = computed(() => pct(stats.value?.wins || 0, stats.value?.total || 0))
+const drawsPct = computed(() => pct(stats.value?.draws || 0, stats.value?.total || 0))
+const lossesPct = computed(() => pct(stats.value?.losses || 0, stats.value?.total || 0))
+
 function clamp(n: number) { return Math.max(0, Math.min(10, Math.round(n || 0))) }
 function inc(k: AbilityKey) { editAbilities[k] = clamp(editAbilities[k] + 1) }
 function dec(k: AbilityKey) { editAbilities[k] = clamp(editAbilities[k] - 1) }
@@ -106,6 +121,39 @@ async function saveSkills() {
   <div class="text-sm" v-if="player.rating !== undefined">{{ t('playerDetail.rating') }} <strong>{{ player.rating }}</strong></div>
   <div class="text-xs text-gray-400" v-if="player.createdAt">{{ t('playerDetail.createdAt') }} {{ new Date(player.createdAt).toLocaleString() }}</div>
   <div class="text-xs text-gray-400" v-if="player.updatedAt">{{ t('playerDetail.updatedAt') }} {{ new Date(player.updatedAt).toLocaleString() }}</div>
+
+        <!-- Stats Section -->
+        <div class="mt-4 pt-4 border-t space-y-3" v-if="hasStats">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-600">{{ t('playerDetail.statsTitle') }}</h3>
+            <div v-if="stats?.total" class="text-xs text-gray-500">{{ t('playerDetail.winRate') }}: <strong>{{ winRate }}%</strong></div>
+          </div>
+          <div v-if="stats?.error" class="text-xs text-red-600 flex items-center gap-2">
+            <span>⚠️ {{ t('playerDetail.statsError') }}</span>
+          </div>
+          <div v-else-if="!stats?.total" class="text-xs text-gray-500">{{ t('playerDetail.noStatsYet') }}</div>
+          <template v-else>
+            <!-- Stacked bar -->
+            <div class="space-y-1">
+              <div class="h-2 w-full bg-gray-100 rounded overflow-hidden flex">
+                <div v-if="winsPct" :style="{width: winsPct + '%'}" class="bg-green-500 transition-all"></div>
+                <div v-if="drawsPct" :style="{width: drawsPct + '%'}" class="bg-gray-400 transition-all"></div>
+                <div v-if="lossesPct" :style="{width: lossesPct + '%'}" class="bg-red-500 transition-all"></div>
+              </div>
+              <div class="flex justify-between text-[10px] uppercase tracking-wide text-gray-500">
+                <span>{{ t('playerDetail.wins') }} {{ stats?.wins }}</span>
+                <span>{{ t('playerDetail.draws') }} {{ stats?.draws }}</span>
+                <span>{{ t('playerDetail.losses') }} {{ stats?.losses }}</span>
+                <span>{{ t('playerDetail.total') }} {{ stats?.total }}</span>
+              </div>
+            </div>
+            <!-- Record compact -->
+            <div class="text-xs text-gray-600">
+              {{ t('playerDetail.record') }}: <strong>{{ stats?.wins }}-{{ stats?.draws }}-{{ stats?.losses }}</strong>
+              <span class="ml-2 text-gray-400">({{ winRate }}% WR)</span>
+            </div>
+          </template>
+        </div>
       </div>
 
       <!-- Habilidades -->
