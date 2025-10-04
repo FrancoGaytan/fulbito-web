@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { t } from '@/localizations'
 import CenteredLoader from '../components/CenteredLoader.vue'
+import PlayerCard from '../components/PlayerCard.vue'
 import { localStorageKeys } from '../utils/localStorageKeys'
 import { useRouter } from 'vue-router'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
@@ -150,49 +151,17 @@ async function removePlayer(id: string) {
 
     <!-- listado (muestra badges con los scores) -->
     <TransitionGroup name="player" tag="ul" class="grid md:grid-cols-2 gap-4" appear>
-  <li v-for="p in players.items" :key="p._id" class="relative bg-white p-4 rounded-xl shadow border space-y-2 overflow-hidden cursor-pointer hover:shadow-md transition"
-      @click="(e:any)=>{ if(e.target.closest('button')) return; router.push({ name: 'player-detail', params: { id: p._id } }) }">
-        <button
-          type="button"
-            @click="removePlayer(p._id)"
-            class="absolute top-2 right-2 w-7 h-7 inline-flex items-center justify-center rounded-md bg-black text-white text-xs hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
-            title="Eliminar jugador"
-        >
-          <!-- ícono simple X -->
-          <span class="-mt-px">✕</span>
-        </button>
-        <div class="font-medium pr-8 flex items-center gap-2">
-          <span>{{ p.name }}</span>
-          <span v-if="(p.gamesPlayed ?? 0) === 0" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">{{ t('players.new') }}</span>
-          <template v-if="p.userId && p.userId === currentUserId">
-            <span class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{{ t('players.myProfile') }}</span>
-            <button
-              type="button"
-              @click="unclaim(p)"
-              class="text-[10px] uppercase tracking-wide bg-red-600 text-white px-2 py-0.5 rounded hover:bg-red-500"
-            >{{ t('players.unclaim') }}</button>
-          </template>
-          <span v-else-if="p.userId" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ t('players.claimed') }}</span>
-          <button
-            v-else-if="!myClaimedPlayerId"
-            @click="claim(p)"
-            class="text-[10px] uppercase tracking-wide bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-500"
-          >{{ t('players.claim') }}</button>
-        </div>
-        <div class="text-sm text-gray-500" v-if="p.nickname">@{{ p.nickname }}</div>
-        <div v-if="p.gamesPlayed !== undefined" class="text-xs text-gray-500">
-          {{ t('players.gamesPlayed') }} <span class="font-medium">{{ p.gamesPlayed }}</span>
-        </div>
-        <div class="flex flex-wrap gap-1">
-          <span
-            v-for="([k, v]) in Object.entries(p.abilities || {})"
-            :key="k"
-            class="text-xs px-2 py-0.5 rounded-full bg-gray-100 border"
-          >
-            {{ abilityLabels[k as AbilityKey] ?? k }}: {{ v }}
-          </span>
-        </div>
-      </li>
+      <PlayerCard
+        v-for="p in players.items"
+        :key="p._id"
+        :player="p"
+        :current-user-id="currentUserId"
+        :my-claimed-player-id="myClaimedPlayerId"
+        @open="(pl)=> router.push({ name: 'player-detail', params: { id: pl._id } })"
+        @remove="removePlayer"
+        @claim="claim"
+        @unclaim="unclaim"
+      />
     </TransitionGroup>
   </div>
 </div>

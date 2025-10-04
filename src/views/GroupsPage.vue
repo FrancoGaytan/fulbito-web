@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { t } from '@/localizations';
-import CenteredLoader from '../components/CenteredLoader.vue';
+import { t } from "@/localizations";
+import CenteredLoader from "../components/CenteredLoader.vue";
+import GroupCard from "../components/GroupCard.vue";
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
 import * as groupsApi from "../lib/groups.service";
@@ -13,8 +14,11 @@ const loading = ref(true);
 
 onMounted(async () => {
   loading.value = true;
-  try { await Promise.all([groups.fetch(), players.fetch()]); }
-  finally { loading.value = false; }
+  try {
+    await Promise.all([groups.fetch(), players.fetch()]);
+  } finally {
+    loading.value = false;
+  }
 });
 
 const gName = ref("");
@@ -94,7 +98,7 @@ async function removeGroup(id: UUID) {
     if (panelFor.value === id) panelFor.value = "";
   } catch (e) {
     console.error(e);
-  alert(t('groups.deleteError'));
+    alert(t("groups.deleteError"));
   }
 }
 </script>
@@ -102,129 +106,53 @@ async function removeGroup(id: UUID) {
 <template>
   <CenteredLoader v-if="loading" :label="t('groups.loading')" />
   <template v-else>
-  <!-- Crear grupo -->
-  <div class="bg-white border rounded-xl p-4 mb-6">
-  <h2 class="text-lg font-semibold mb-3">{{ t('groups.createTitle') }}</h2>
-    <div class="grid md:grid-cols-3 gap-3">
-      <input
-        v-model="gName"
-        type="text"
-  :placeholder="t('groups.namePlaceholder')"
-        class="border rounded px-3 py-2 w-full"
-      />
-      <input
-        v-model="gDesc"
-        type="text"
-  :placeholder="t('groups.descPlaceholder')"
-        class="border rounded px-3 py-2 w-full"
-      />
-      <button
-        class="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-        :disabled="!gName.trim() || creating"
-        @click="createNewGroup"
-      >
-  {{ creating ? t('groups.creating') : t('groups.create') }}
-      </button>
-    </div>
-  </div>
-
-  <!-- Grupos + panel agregar jugadores -->
-  <TransitionGroup
-    name="group"
-    tag="div"
-    class="grid md:grid-cols-2 gap-4"
-    appear
-  >
-    <div
-      v-for="g in groups.items"
-      :key="g._id"
-      class="bg-white border rounded-xl p-4 space-y-3 shadow-sm"
-    >
-      <div class="flex items-center gap-3">
-        <h2 class="font-medium text-lg">{{ g.name }}</h2>
-        <div class="flex items-center gap-2">
-          <span v-if="g.isOwner" class="text-[10px] uppercase tracking-wide bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded">{{ t('groups.owner') }}</span>
-          <span v-else-if="g.isMember" class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded">{{ t('groups.member') }}</span>
-        </div>
-        <span class="ml-auto text-sm text-gray-500">
-          {{ memberIdsFromAny(g).length }} {{ t('groups.playersSuffix') }}
-        </span>
-      </div>
-
-      <div class="flex flex-wrap gap-2">
-        <span
-          v-for="pid in memberIdsFromAny(g)"
-          :key="pid"
-          class="text-xs rounded-full bg-gray-100 border px-2 py-0.5"
-        >
-          {{ nameById[pid] || pid }}
-        </span>
-      </div>
-
-      <div class="flex gap-2 justify-between">
+    <!-- Crear grupo -->
+    <div class="bg-white border rounded-xl p-4 mb-6">
+      <h2 class="text-lg font-semibold mb-3">{{ t("groups.createTitle") }}</h2>
+      <div class="grid md:grid-cols-3 gap-3">
+        <input
+          v-model="gName"
+          type="text"
+          :placeholder="t('groups.namePlaceholder')"
+          class="border rounded px-3 py-2 w-full"
+        />
+        <input
+          v-model="gDesc"
+          type="text"
+          :placeholder="t('groups.descPlaceholder')"
+          class="border rounded px-3 py-2 w-full"
+        />
         <button
-          class="px-3 py-1.5 rounded text-white disabled:opacity-50"
-          :class="g.canEdit ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
-          :disabled="!g.canEdit"
-          @click="openPanel(g._id)"
-          :title="g.canEdit ? t('groups.addPlayers') : t('groups.addPlayersTitle')"
+          class="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+          :disabled="!gName.trim() || creating"
+          @click="createNewGroup"
         >
-          {{ t('groups.addPlayers') }}
-        </button>
-        <button
-          v-if="g.canEdit"
-          type="button"
-          @click="removeGroup(g._id as UUID)"
-          class="ml-2 px-3 py-1 text-s rounded bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
-          :title="t('groups.deleteTitle')"
-        >
-          {{ t('groups.delete') }}
+          {{ creating ? t("groups.creating") : t("groups.create") }}
         </button>
       </div>
-
-      <!-- Panel inline -->
-      <div v-if="panelFor === g._id" class="mt-3 border-t pt-3 space-y-3">
-        <div class="flex items-center gap-2">
-          <input
-            v-model="search"
-            type="text"
-            :placeholder="t('groups.searchPlayer')"
-            class="border rounded px-3 py-2 w-full"
-          />
-          <button
-            class="px-2 py-2 text-xs border rounded leading-none"
-            @click="selected = filtered.map((p) => p._id as UUID)"
-          >
-            {{ t('groups.selectAll') }}
-          </button>
-        </div>
-
-        <div class="max-h-64 overflow-auto grid md:grid-cols-2 gap-2">
-          <label
-            v-for="p in filtered"
-            :key="p._id"
-            class="flex items-center gap-2 border rounded px-3 py-2"
-          >
-            <input type="checkbox" :value="p._id" v-model="selected" />
-            <span>{{ p.name }}</span>
-          </label>
-        </div>
-
-        <div class="flex items-center gap-2">
-          <button
-            class="px-3 py-2 rounded bg-black text-white disabled:opacity-50"
-            :disabled="selected.length === 0"
-            @click="addSelected"
-          >
-            {{ t('groups.addCount') }} {{ selected.length }}
-          </button>
-          <button class="px-3 py-2 border rounded" @click="panelFor = ''">
-            {{ t('groups.close') }}
-          </button>
-        </div>
-      </div>
     </div>
-  </TransitionGroup>
+
+    <!-- Grupos + panel agregar jugadores -->
+    <TransitionGroup name="group" tag="div" class="grid md:grid-cols-2 gap-4" appear>
+      <GroupCard
+        v-for="g in groups.items"
+        :key="g._id"
+        :group="g"
+        :is-open="panelFor === g._id"
+        :member-ids="memberIdsFromAny(g)"
+        :name-by-id="nameById"
+        :filtered="filtered"
+        :selected="selected"
+        :search="search"
+        @open="openPanel"
+        @close="panelFor = ''"
+        @update:search="(v)=> search = v"
+        @update:selected="(v)=> selected = v"
+        @add-selected="addSelected"
+        @remove="removeGroup"
+        @select-all="selected = filtered.map(p=> p._id as UUID)"
+      />
+    </TransitionGroup>
   </template>
 </template>
 
