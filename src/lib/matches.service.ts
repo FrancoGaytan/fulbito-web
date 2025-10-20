@@ -62,9 +62,9 @@ export const addParticipant = (
  * @returns Teams generation response
  */
 export const generateTeams = (id: UUID, opts?: { ai?: boolean; seed?: number }) => {
-  const ai = opts?.ai ? '1' : '0'
+  //const ai = opts?.ai ? '1' : '0'
   const seed = typeof opts?.seed === 'number' ? opts!.seed : Date.now()
-  return _post<GenerateTeamsResponse>(`/matches/${id}/generate-teams?ai=${ai}&seed=${seed}`)
+  return _post<GenerateTeamsResponse>(`/matches/${id}/generate-teams?ai=1&seed=${seed}`)
 }
 
 /**
