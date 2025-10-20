@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * Simple fullscreen centered loader overlay.
+ * @prop label Optional custom text (defaults to localized fallback outside component)
+ */
 defineProps<{ label?: string }>();
 </script>
 

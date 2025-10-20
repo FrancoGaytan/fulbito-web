@@ -12,6 +12,10 @@ const groups = useGroups();
 const players = usePlayers();
 const loading = ref(true);
 
+/**
+ * Initial fetch for groups & players on mount.
+ * @returns {Promise<void>} Resolves when both stores have finished loading.
+ */
 onMounted(async () => {
   loading.value = true;
   try {
@@ -19,6 +23,10 @@ onMounted(async () => {
   } finally { loading.value = false; }
 });
 
+/**
+ * Build current datetime-local string (YYYY-MM-DDTHH:mm) for input default.
+ * @returns {string} A formatted datetime-local compatible value.
+ */
 function nowLocalForInput() {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -47,6 +55,11 @@ const groupMembers = computed(() => {
   return players.items.filter((p) => set.has(String(p._id)));
 });
 
+/**
+ * React to group selection changes: prune selected players not in group and fetch matches.
+ * @param {UUID | ""} gid Group id chosen by the user (empty string means none).
+ * @returns {Promise<void>} Resolves after matches (if any) are fetched.
+ */
 watch(selectedGroup, async (gid) => {
   const set = new Set(groupMemberIds.value);
   selectedPlayers.value = selectedPlayers.value.filter((id) =>
@@ -66,6 +79,12 @@ watch(selectedGroup, async (gid) => {
   }
 });
 
+/**
+ * Create a new match with chosen players & optional scheduled timestamp.
+ * Highlights the created card briefly.
+ * Preconditions: selectedGroup set and at least two players chosen.
+ * @returns {Promise<void>} Resolves after creation and UI state updates.
+ */
 async function createMatch() {
   if (!selectedGroup.value || selectedPlayers.value.length < 2) return;
 
@@ -84,6 +103,11 @@ async function createMatch() {
 }
 
 
+/**
+ * Delete match by id and remove from list; shows alert on failure.
+ * @param {UUID} id Match identifier to delete.
+ * @returns {Promise<void>}
+ */
 async function removeMatch(id: UUID) {
   try {
     await apiDeleteMatch(id);

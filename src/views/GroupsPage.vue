@@ -12,6 +12,10 @@ const groups = useGroups();
 const players = usePlayers();
 const loading = ref(true);
 
+/**
+ * Fetch groups & players in parallel for initial render.
+ * @returns {Promise<void>}
+ */
 onMounted(async () => {
   loading.value = true;
   try {
@@ -25,10 +29,20 @@ const gName = ref("");
 const gDesc = ref("");
 const creating = ref(false);
 
+/**
+ * Normalize group membership array bridging members vs players legacy fields.
+ * @param {any} g Raw group object returned by API.
+ * @returns {string[]} Array of member player IDs (stringified).
+ */
 function memberIdsFromAny(g: any): string[] {
   return ((g?.members ?? g?.players ?? []) as string[]).map(String);
 }
 
+/**
+ * Create a new group then open its add-players panel.
+ * Uses name/description refs; resets on success.
+ * @returns {Promise<void>}
+ */
 async function createNewGroup() {
   const name = gName.value.trim();
   if (!name) return;
@@ -75,12 +89,22 @@ const filtered = computed(() => {
     : available.value;
 });
 
+/**
+ * Open group panel and reset selection & search state.
+ * @param {UUID} groupId Group identifier.
+ * @returns {void}
+ */
 function openPanel(groupId: UUID) {
   panelFor.value = groupId;
   search.value = "";
   selected.value = [];
 }
 
+/**
+ * Persist selected players into active group via API call.
+ * Clears filter + selection after update.
+ * @returns {Promise<void>}
+ */
 async function addSelected() {
   if (!activeGroup.value || selected.value.length === 0) return;
   await groupsApi.addPlayersToGroup(activeGroup.value._id, selected.value);
@@ -91,6 +115,11 @@ async function addSelected() {
   search.value = "";
 }
 
+/**
+ * Delete group and close panel if it was active.
+ * @param {UUID} id Group identifier to remove.
+ * @returns {Promise<void>}
+ */
 async function removeGroup(id: UUID) {
   try {
     await groupsApi.deleteGroup(id);
