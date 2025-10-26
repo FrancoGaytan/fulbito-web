@@ -7,8 +7,30 @@ vi.mock('@/lib/httpService')
 
 const mhttp: any = http
 
+// Deterministic in‑memory localStorage polyfill (avoids proxy mutation issues)
+{
+  let mem: Record<string, string> = {}
+  const poly: Storage = {
+    get length() { return Object.keys(mem).length },
+    clear() { mem = {} },
+    key(i: number) { return Object.keys(mem)[i] || null },
+    getItem(k: string) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null },
+    setItem(k: string, v: string) { mem[k] = String(v) },
+    removeItem(k: string) { delete mem[k] }
+  } as any
+  // Replace global
+  ;(globalThis as any).localStorage = poly
+}
+
 beforeEach(() => {
-  localStorage.clear()
+  if (typeof localStorage.clear === 'function') {
+    localStorage.clear()
+  } else {
+    // Fallback polyfill clear
+    Object.keys(localStorage as any).forEach(k => {
+      try { (localStorage as any).removeItem?.(k) } catch {}
+    })
+  }
   vi.resetAllMocks()
 })
 

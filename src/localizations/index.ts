@@ -65,6 +65,7 @@ const es: Dictionary = {
     addCount: "Agregar",
     close: "Cerrar",
     deleteError: "No se pudo eliminar el grupo",
+    noGroupsInSpace: "Este espacio no contiene grupos visibles.",
   },
   matches: {
     loading: "Cargando partidos…",
@@ -137,6 +138,10 @@ const es: Dictionary = {
     claimError: "No se pudo reclamar el jugador",
     unclaimError: "No se pudo desvincular el jugador",
     deleteError: "No se pudo eliminar el jugador",
+    contextRating: "Rating grupo:",
+    noGroupsHint: "Aún no pertenecés a ningún grupo: se muestran todos los jugadores disponibles para que puedas crear o reclamar.",
+    filteredByGroupsHint: "Lista filtrada por tus grupos: se ocultaron jugadores que no pertenecen a ningún grupo visible.",
+    onlyUnclaimedHint: "Mostrando solo jugadores SIN reclamar hasta que asocies uno a tu usuario.",
   },
   playerDetail: {
     loading: "Cargando jugador…",
@@ -166,6 +171,12 @@ const es: Dictionary = {
     winRate: "% Victorias",
     noStatsYet: "Sin partidos finalizados todavía",
     statsError: "No se pudieron calcular las estadísticas",
+    contextSectionTitle: "Rendimiento (grupo)",
+    contextRating: "Rating (grupo):",
+  },
+  groupSelector: {
+    label: "Espacio",
+    all: "Todos",
   },
   forgot: {
     step1: "Recuperar contraseña",

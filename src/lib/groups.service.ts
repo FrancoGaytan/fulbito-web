@@ -1,5 +1,5 @@
 import { _del, _get, _post } from '../lib/httpService';
-import type { Group } from '../types';
+import type { Group, GroupRankingResponse, MyMembershipsResponse, GroupMembership } from '../types';
 
 /**
  * Fetch all groups visible to the current user.
@@ -53,3 +53,24 @@ export const addPlayersToGroup = (groupId: string, playerIds: string[]) =>
  * @returns Backend confirmation message
  */
 export const deleteGroup = (id: string) => _del<{ message: string }>(`/groups/${id}`);
+
+// ---------------- Contextual (multi-membership) helpers (LEGACY) ----------------
+// getGroupPlayers DEPRECADO: reemplazado por getPlayers(spaceId?) en players.service.ts
+// Se mantiene comentado como referencia de transición.
+// export const getGroupPlayers = (groupId: string, signal?: AbortSignal) =>
+//   _get<GroupPlayersResponse>(`/api/groups/${groupId}/players-context`, signal);
+
+/**
+ * Lightweight ranking (sin página dedicada todavía) que podremos usar para
+ * enriquecer vistas de detalle. Incluye rating y stats agrupados.
+ */
+export const getGroupRanking = (groupId: string, signal?: AbortSignal) =>
+  _get<GroupRankingResponse>(`/api/groups/${groupId}/ranking`, signal);
+
+/** Crear membership explícito (normalmente backend lo hace al agregar player) */
+export const createMembership = (groupId: string, playerId: string, signal?: AbortSignal) =>
+  _post<GroupMembership, { playerId: string }>(`/api/groups/${groupId}/memberships`, { playerId }, signal);
+
+/** Memberships del usuario autenticado para poblar selectores */
+export const getMyMemberships = (signal?: AbortSignal) =>
+  _get<MyMembershipsResponse>(`/api/memberships/me`, signal);

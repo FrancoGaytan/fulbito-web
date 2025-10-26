@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { t } from '@/localizations'
 import CenteredLoader from '../components/CenteredLoader.vue'
 import PlayerCard from '../components/PlayerCard.vue'
@@ -9,12 +9,15 @@ import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilit
 import * as playersApi from '../lib/players.service'
 import { usePlayers } from '../stores/players'
 import { useGroups } from '../stores/groups'
+import { useGroupContext } from '../stores/groupContext'
+// getGroupPlayers deprecado: ahora usamos getPlayers(spaceId?) unificado
 
 // Stores
 const players = usePlayers()
 const router = useRouter()
 const groups = useGroups()
 const loading = ref(true)
+const ctx = useGroupContext()
 
 const name = ref('')
 const nickname = ref('')
@@ -52,14 +55,27 @@ async function createPlayer() {
   abilityKeys.forEach(k => (abilityScores[k] = 0))
 }
 
-const allPlayers = ref(players.items)
+// allPlayers ya no es necesario (flujo unificado getPlayers)
+// const allPlayers = ref(players.items)
 /** Load initial players & groups data, populating list */
 onMounted(async () => {
   loading.value = true
   try {
     await groups.fetch()
-    allPlayers.value = await playersApi.listAllPlayers()
-    players.items = allPlayers.value
+    // Nuevo flujo: getPlayers(spaceId?) devuelve directamente contextMembership si se pasa spaceId
+    if (ctx.activeGroupId) {
+      players.items = await playersApi.getPlayers(ctx.activeGroupId)
+    } else {
+      players.items = await playersApi.getPlayers()
+    }
+  } finally { loading.value = false }
+})
+
+// Reaccionar a cambios de grupo activo
+watch(() => ctx.activeGroupId, async (gid) => {
+  loading.value = true
+  try {
+    players.items = await playersApi.getPlayers(gid || undefined)
   } finally { loading.value = false }
 })
 
@@ -73,6 +89,41 @@ const currentUserId = computed(() => {
 })
 
 const myClaimedPlayerId = computed(() => players.items.find(p => p.userId && p.userId === currentUserId.value)?._id || '')
+const hasClaim = computed(() => !!myClaimedPlayerId.value)
+
+// Filtrado global: cuando NO hay grupo activo, ocultar jugadores que no pertenecen a ninguno de los grupos listados.
+// (Evita mostrar jugadores de otros contextos ajenos / no asignados a mis grupos visibles.)
+const displayedPlayers = computed(() => {
+  // Si hay grupo activo ya estamos mostrando sólo los de ese grupo (players.items ya contextualizados)
+  if (ctx.activeGroupId) {
+    // Si todavía no reclamé un jugador, oculto los ya reclamados en el grupo
+    return hasClaim.value ? players.items : players.items.filter(p => !p.userId)
+  }
+  // Construir set sólo con grupos donde soy miembro/owner (contexto propio)
+  const memberSet = new Set<string>()
+  for (const g of groups.items) {
+    if ((g as any).isMember || (g as any).isOwner) {
+      const arr = ((g as any).members ?? (g as any).players ?? []) as string[]
+      for (const id of arr) memberSet.add(String(id))
+    }
+  }
+  // Usuario sin grupos aún: mostrar sólo no reclamados para que pueda elegir/crear (no ruido de jugadores ajenos)
+  if (memberSet.size === 0) {
+    return hasClaim.value ? players.items : players.items.filter(p => !p.userId)
+  }
+  if (!hasClaim.value) {
+    // Tengo grupos pero aún no reclamé: mostrar únicamente jugadores no reclamados dentro de mis grupos
+    return players.items.filter(p => !p.userId && memberSet.has(p._id))
+  }
+  // Caso con jugador reclamado: mostrar todos los jugadores de mis grupos (más mi jugador por si no aparece por algún edge)
+  return players.items.filter(p => memberSet.has(p._id) || p.userId === currentUserId.value)
+})
+
+// Cantidad de jugadores ocultados (para hint opcional)
+const filteredOutCount = computed(() => {
+  if (ctx.activeGroupId) return 0
+  return players.items.length - displayedPlayers.value.length
+})
 
 
 /**
@@ -126,6 +177,9 @@ async function removePlayer(id: string) {
 <CenteredLoader v-if="loading" :label="t('players.loading')" />
 <div v-else class="space-y-6">
   <h1 class="text-2xl font-semibold">{{ t('players.title') }}</h1>
+  <p v-if="!hasClaim" class="text-xs text-gray-500">{{ t('players.onlyUnclaimedHint') }}</p>
+  <p v-else-if="!ctx.activeGroupId && groups.items.length === 0" class="text-xs text-gray-500">{{ t('players.noGroupsHint') }}</p>
+  <p v-else-if="!ctx.activeGroupId && filteredOutCount > 0" class="text-xs text-gray-500">{{ t('players.filteredByGroupsHint') }}</p>
 
   <div class="bg-white p-4 rounded-xl shadow border space-y-4">
   <h2 class="font-medium">{{ t('players.createTitle') }}</h2>
@@ -174,7 +228,7 @@ async function removePlayer(id: string) {
     <!-- listado (muestra badges con los scores) -->
     <TransitionGroup name="player" tag="ul" class="grid md:grid-cols-2 gap-4" appear>
       <PlayerCard
-        v-for="p in players.items"
+  v-for="p in displayedPlayers"
         :key="p._id"
         :player="p"
         :current-user-id="currentUserId"

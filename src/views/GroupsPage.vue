@@ -4,6 +4,7 @@ import { t } from "@/localizations";
 import CenteredLoader from "../components/CenteredLoader.vue";
 import GroupCard from "../components/GroupCard.vue";
 import { useGroups } from "../stores/groups";
+import { useGroupContext } from "../stores/groupContext";
 import { usePlayers } from "../stores/players";
 import * as groupsApi from "../lib/groups.service";
 import type { UUID } from "../types";
@@ -11,6 +12,7 @@ import type { UUID } from "../types";
 const groups = useGroups();
 const players = usePlayers();
 const loading = ref(true);
+const ctx = useGroupContext();
 
 /**
  * Fetch groups & players in parallel for initial render.
@@ -130,6 +132,12 @@ async function removeGroup(id: UUID) {
     alert(t("groups.deleteError"));
   }
 }
+// Filtrado por espacio (ctx.activeGroupId) mostrando sólo el grupo seleccionado si coincide
+const displayedGroups = computed(() => {
+  if (!ctx.activeGroupId) return groups.items;
+  return groups.items.filter(g => g._id === ctx.activeGroupId);
+});
+
 </script>
 
 <template>
@@ -164,7 +172,7 @@ async function removeGroup(id: UUID) {
     <!-- Grupos + panel agregar jugadores -->
     <TransitionGroup name="group" tag="div" class="grid md:grid-cols-2 gap-4" appear>
       <GroupCard
-        v-for="g in groups.items"
+        v-for="g in displayedGroups"
         :key="g._id"
         :group="g"
         :is-open="panelFor === g._id"
@@ -182,6 +190,7 @@ async function removeGroup(id: UUID) {
         @select-all="selected = filtered.map(p=> p._id as UUID)"
       />
     </TransitionGroup>
+    <p v-if="ctx.activeGroupId && displayedGroups.length===0" class="text-xs text-gray-500 mt-2">{{ t('groups.noGroupsInSpace') }}</p>
   </template>
 </template>
 

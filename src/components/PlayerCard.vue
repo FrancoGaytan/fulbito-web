@@ -2,6 +2,7 @@
 import { t } from '@/localizations';
 import { abilityLabels, type AbilityKey } from '@/constants/abilities';
 import type { Player, UUID } from '@/types';
+import { computed } from 'vue';
 
 /**
  * PlayerCard
@@ -49,6 +50,19 @@ function unclaim() { emit('unclaim', props.player); }
 const isMine = () => props.player.userId && props.player.userId === props.currentUserId;
 /** Whether player is claimed by any user */
 const isClaimed = () => !!props.player.userId;
+
+// ---- Derived display metrics ----
+// Rating mostrado: si hay espacio activo el servicio ya trae contextMembership
+const displayedRating = computed(() => props.player.contextMembership?.rating ?? props.player.rating);
+// Total de partidos contextual prioriza membership.gamesPlayed -> stats.total -> gamesPlayed global.
+const gamesPlayedTotal = computed(() => {
+  const m = props.player.contextMembership;
+  if (m && typeof m.gamesPlayed === 'number') return m.gamesPlayed;
+  const statsTotal = props.player.stats?.total;
+  if (typeof statsTotal === 'number' && statsTotal > 0) return statsTotal;
+  return props.player.gamesPlayed ?? 0;
+});
+const isNew = computed(() => gamesPlayedTotal.value === 0);
 </script>
 
 <template>
@@ -65,8 +79,9 @@ const isClaimed = () => !!props.player.userId;
       <span class="-mt-px">✕</span>
     </button>
     <div class="font-medium pr-8 flex items-center gap-2">
-      <span>{{ player.name }}</span>
-      <span v-if="(player.gamesPlayed ?? 0) === 0" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">{{ t('players.new') }}</span>
+    <span>{{ player.name }}</span>
+      <span v-if="isNew" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">{{ t('players.new') }}</span>
+    <div v-if="displayedRating !== undefined" class="text-xs text-gray-600 font-medium">{{ displayedRating }}</div>
       <template v-if="isMine()">
         <span class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{{ t('players.myProfile') }}</span>
         <button
@@ -83,8 +98,8 @@ const isClaimed = () => !!props.player.userId;
       >{{ t('players.claim') }}</button>
     </div>
     <div class="text-sm text-gray-500" v-if="player.nickname">@{{ player.nickname }}</div>
-    <div v-if="player.gamesPlayed !== undefined" class="text-xs text-gray-500">
-      {{ t('players.gamesPlayed') }} <span class="font-medium">{{ player.gamesPlayed }}</span>
+    <div class="text-xs text-gray-500">
+      {{ t('players.gamesPlayed') }} <span class="font-medium">{{ gamesPlayedTotal }}</span>
     </div>
     <div class="flex flex-wrap gap-1">
       <span

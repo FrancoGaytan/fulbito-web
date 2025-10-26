@@ -16,6 +16,37 @@ export const listPlayers = (signal?: AbortSignal) => _get<Player[]>('/players', 
 export const listAllPlayers = (signal?: AbortSignal) => _get<Player[]>('/api/players/all', signal)
 
 /**
+ * Nuevo endpoint unificado contextual:
+ * GET /api/players?spaceId=xxx
+ * Si se pasa spaceId => cada player puede incluir contextMembership.
+ * Si no se pasa => comportamiento global (sin contextMembership) manteniendo compat.
+ */
+export const getPlayers = (spaceId?: string, signal?: AbortSignal) => {
+  const url = spaceId ? `/api/players?spaceId=${encodeURIComponent(spaceId)}` : '/api/players'
+  return _get<Player[]>(url, signal).then(arr => arr.map(p => unifyPlayerShape(p)))
+}
+
+/** Normaliza diferencias de backend (claimedByUserId vs userId, id vs _id). */
+function unifyPlayerShape(raw: any): Player {
+  // Asegurar _id existe para UI (si viene id nada más)
+  if (raw._id == null && raw.id != null) raw._id = raw.id
+  // Normalizar userId
+  if (raw.userId == null && raw.claimedByUserId != null) raw.userId = raw.claimedByUserId
+  // Si existen campos de membership planos, mapear a contextMembership (backend actual ya manda nested, solo defensivo)
+  if (!raw.contextMembership && raw.membershipId) {
+    raw.contextMembership = {
+      membershipId: raw.membershipId,
+      rating: raw.ratingInSpace ?? raw.rating, // fallback
+      gamesPlayed: raw.gamesPlayedInSpace,
+      wins: raw.winsInSpace,
+      draws: raw.drawsInSpace,
+      losses: raw.lossesInSpace,
+    }
+  }
+  return raw as Player
+}
+
+/**
  * Create a player entity optionally with nickname & abilities.
  * @param name Player name
  * @param nickname Optional nickname

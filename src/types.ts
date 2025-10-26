@@ -30,9 +30,17 @@ export interface Player {
   nickname?: string;
   gamesPlayed?: number;
   userId?: UUID;
+  /** Nuevo backend: algunos endpoints devuelven claimedByUserId en vez de userId */
+  claimedByUserId?: UUID;
   createdAt?: string;
   updatedAt?: string;
   stats?: PlayerStats;
+  /** Membership contextual (rating + stats por espacio) si se llama con ?spaceId= */
+  contextMembership?: PlayerContextMembership | null;
+  /** @deprecated usar contextMembership?.rating */
+  contextRating?: number;
+  /** @deprecated usar contextMembership para derivar wins/draws/losses/gamesPlayed */
+  contextStats?: PlayerStats;
 }
 
 export interface PlayerStats {
@@ -41,6 +49,21 @@ export interface PlayerStats {
   draws: number;
   total: number;
   error?: string;
+}
+
+// ---------------- Contextual Membership (nuevo modelo unificado) ----------------
+/**
+ * Representa la membresía contextual que viene embebida en /api/players?spaceId=...
+ * Se diferencia de GroupMembership legacy porque es mínima y orientada a UI.
+ */
+export interface PlayerContextMembership {
+  membershipId: UUID;
+  rating?: number;
+  gamesPlayed?: number;
+  wins?: number;
+  draws?: number;
+  losses?: number;
+  // Futuro: lastMatchAt, streaks, etc.
 }
 
 // Groups
@@ -166,4 +189,42 @@ export interface VoteProgressResponse {
   perVoter: VoteProgressPerVoter[];
   allPlayersHaveAtLeastOneVote: boolean;
   allVotersCompletedAllPlayers: boolean;
+}
+
+// ---------------- Contextual Group Membership ----------------
+/**
+ * Relación jugador-grupo que introduce rating y estadísticas contextuales.
+ * El backend genera un membership por cada jugador presente en un grupo.
+ */
+export interface GroupMembership {
+  playerId: UUID;
+  groupId: UUID;
+  rating: number;
+  /** Estadísticas agregadas (solo partidos del grupo) */
+  stats?: PlayerStats;
+  role?: string;               // Ej: 'admin', 'member'
+  status?: string;             // Ej: 'active', 'inactive'
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Respuesta al pedir jugadores de un grupo con datos contextualizados */
+// Legacy (Fase 1) GroupPlayersResponse eliminado: ahora /api/players?spaceId= retorna Player[] con contextMembership.
+
+/** Ranking / leaderboard simple por grupo (no implementamos página dedicada Fase 1) */
+export interface GroupRankingEntry {
+  playerId: UUID;
+  player?: Player;
+  rating: number;
+  wins: number; losses: number; draws: number; total: number;
+}
+export interface GroupRankingResponse {
+  groupId: UUID;
+  entries: GroupRankingEntry[];
+  generatedAt?: string;
+}
+
+/** Memberships del usuario autenticado para poblar selectores u otros UI */
+export interface MyMembershipsResponse {
+  memberships: GroupMembership[];
 }

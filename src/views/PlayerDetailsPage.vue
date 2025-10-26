@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, reactive } from 'vue'
+import { ref, onMounted, computed, reactive, watch } from 'vue'
 import { t } from '@/localizations'
 import CenteredLoader from '../components/CenteredLoader.vue'
 import { useRoute, useRouter } from 'vue-router'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
 import { getPlayer, updatePlayerSkills } from '../lib/players.service'
+import { useGroupContext } from '../stores/groupContext'
+// getGroupPlayers deprecado: usamos getPlayers(spaceId?)
+import { getPlayers } from '../lib/players.service'
 import { usePlayers } from '../stores/players'
 import type { Player } from '../types'
 import { localStorageKeys } from '../utils/localStorageKeys'
@@ -18,6 +21,8 @@ const saving = ref(false)
 const error = ref<string | null>(null)
 const player = ref<Player | null>(null)
 const playersStore = usePlayers()
+const ctx = useGroupContext()
+const contextual = ref<null | { rating?: number; stats?: Player['stats'] }>(null)
 
 const currentUserId = computed(() => {
   try {
@@ -45,6 +50,24 @@ onMounted(async () => {
     const p = await getPlayer(id)
     player.value = p
     loadEditableAbilities(p)
+    if (ctx.activeGroupId) {
+      try {
+        const list = await getPlayers(ctx.activeGroupId)
+        const match = list.find(pl => pl._id === id)
+        const m = match?.contextMembership
+        if (m) {
+          contextual.value = {
+            rating: m.rating,
+            stats: m.gamesPlayed != null ? {
+              wins: m.wins ?? 0,
+              draws: m.draws ?? 0,
+              losses: m.losses ?? 0,
+              total: m.gamesPlayed,
+            } : undefined
+          }
+        }
+      } catch { /* ignore contextual fetch error */ }
+    }
   } catch (e: any) {
     const local = playersStore.items.find(p => p._id === id)
     if (local) {
@@ -59,20 +82,41 @@ onMounted(async () => {
   }
 })
 
-// -------- Stats Computed --------
-const stats = computed(() => player.value?.stats)
-const hasStats = computed(() => !!stats.value && typeof stats.value.total === 'number')
-const winRate = computed(() => {
-  if (!stats.value || !stats.value.total) return 0
-  return +(100 * (stats.value.wins / stats.value.total)).toFixed(1)
+// -------- Rating & Stats Unificados (si hay espacio activo se reemplaza global) --------
+const displayedRating = computed(() => contextual.value?.rating ?? player.value?.rating)
+const displayedStats = computed(() => {
+  // Usar stats contextuales si existen, sino las globales
+  if (contextual.value?.stats && typeof contextual.value.stats.total === 'number') return contextual.value.stats
+  return player.value?.stats || null
 })
-function pct(part: number, total: number) {
-  if (!total) return 0
-  return +(100 * (part / total)).toFixed(2)
-}
-const winsPct = computed(() => pct(stats.value?.wins || 0, stats.value?.total || 0))
-const drawsPct = computed(() => pct(stats.value?.draws || 0, stats.value?.total || 0))
-const lossesPct = computed(() => pct(stats.value?.losses || 0, stats.value?.total || 0))
+const hasDisplayedStats = computed(() => !!displayedStats.value && typeof displayedStats.value.total === 'number')
+function pct(part: number, total: number) { if (!total) return 0; return +(100 * (part / total)).toFixed(2) }
+const winRate = computed(() => {
+  const s = displayedStats.value; if (!s || !s.total) return 0; return +(100 * (s.wins / s.total)).toFixed(1)
+})
+const winsPct = computed(() => pct(displayedStats.value?.wins || 0, displayedStats.value?.total || 0))
+const drawsPct = computed(() => pct(displayedStats.value?.draws || 0, displayedStats.value?.total || 0))
+const lossesPct = computed(() => pct(displayedStats.value?.losses || 0, displayedStats.value?.total || 0))
+
+watch(() => ctx.activeGroupId, async (gid) => {
+  if (!gid) { contextual.value = null; return }
+  try {
+    const list = await getPlayers(gid)
+    const match = list.find(pl => pl._id === id)
+    const m = match?.contextMembership
+    if (m) {
+      contextual.value = {
+        rating: m.rating,
+        stats: m.gamesPlayed != null ? {
+          wins: m.wins ?? 0,
+          draws: m.draws ?? 0,
+          losses: m.losses ?? 0,
+          total: m.gamesPlayed,
+        } : undefined
+      }
+    } else contextual.value = null
+  } catch { contextual.value = null }
+})
 
 function clamp(n: number) { return Math.max(0, Math.min(10, Math.round(n || 0))) }
 function inc(k: AbilityKey) { editAbilities[k] = clamp(editAbilities[k] + 1) }
@@ -117,21 +161,21 @@ async function saveSkills() {
           <span v-if="player.userId === currentUserId" class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-2 py-0.5 rounded">{{ t('playerDetail.myProfile') }}</span>
           <span v-else-if="player.userId" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{{ t('playerDetail.claimed') }}</span>
         </div>
-  <div class="text-sm">{{ t('playerDetail.gamesPlayed') }} <strong>{{ player.gamesPlayed ?? 0 }}</strong></div>
-  <div class="text-sm" v-if="player.rating !== undefined">{{ t('playerDetail.rating') }} <strong>{{ player.rating }}</strong></div>
+  <div class="text-sm">{{ t('playerDetail.gamesPlayed') }} <strong>{{ displayedStats?.total ?? player.gamesPlayed ?? 0 }}</strong></div>
+  <div class="text-sm" v-if="displayedRating !== undefined">{{ t('playerDetail.rating') }} <strong>{{ displayedRating }}</strong></div>
   <div class="text-xs text-gray-400" v-if="player.createdAt">{{ t('playerDetail.createdAt') }} {{ new Date(player.createdAt).toLocaleString() }}</div>
   <div class="text-xs text-gray-400" v-if="player.updatedAt">{{ t('playerDetail.updatedAt') }} {{ new Date(player.updatedAt).toLocaleString() }}</div>
 
-        <!-- Stats Section -->
-        <div class="mt-4 pt-4 border-t space-y-3" v-if="hasStats">
+        <!-- Stats Section (unificada, usa contextual si hay espacio) -->
+        <div class="mt-4 pt-4 border-t space-y-3" v-if="hasDisplayedStats">
           <div class="flex items-center justify-between flex-wrap gap-2">
             <h3 class="text-sm font-semibold uppercase tracking-wide text-gray-600">{{ t('playerDetail.statsTitle') }}</h3>
-            <div v-if="stats?.total" class="text-xs text-gray-500">{{ t('playerDetail.winRate') }}: <strong>{{ winRate }}%</strong></div>
+            <div v-if="displayedStats?.total" class="text-xs text-gray-500">{{ t('playerDetail.winRate') }}: <strong>{{ winRate }}%</strong></div>
           </div>
-          <div v-if="stats?.error" class="text-xs text-red-600 flex items-center gap-2">
+          <div v-if="displayedStats?.error" class="text-xs text-red-600 flex items-center gap-2">
             <span>⚠️ {{ t('playerDetail.statsError') }}</span>
           </div>
-          <div v-else-if="!stats?.total" class="text-xs text-gray-500">{{ t('playerDetail.noStatsYet') }}</div>
+          <div v-else-if="!displayedStats?.total" class="text-xs text-gray-500">{{ t('playerDetail.noStatsYet') }}</div>
           <template v-else>
             <!-- Stacked bar -->
             <div class="space-y-1">
@@ -141,20 +185,21 @@ async function saveSkills() {
                 <div v-if="lossesPct" :style="{width: lossesPct + '%'}" class="bg-red-500 transition-all"></div>
               </div>
               <div class="flex justify-between text-[10px] uppercase tracking-wide text-gray-500">
-                <span>{{ t('playerDetail.wins') }} {{ stats?.wins }}</span>
-                <span>{{ t('playerDetail.draws') }} {{ stats?.draws }}</span>
-                <span>{{ t('playerDetail.losses') }} {{ stats?.losses }}</span>
-                <span>{{ t('playerDetail.total') }} {{ stats?.total }}</span>
+                <span>{{ t('playerDetail.wins') }} {{ displayedStats?.wins }}</span>
+                <span>{{ t('playerDetail.draws') }} {{ displayedStats?.draws }}</span>
+                <span>{{ t('playerDetail.losses') }} {{ displayedStats?.losses }}</span>
+                <span>{{ t('playerDetail.total') }} {{ displayedStats?.total }}</span>
               </div>
             </div>
             <!-- Record compact -->
             <div class="text-xs text-gray-600">
-              {{ t('playerDetail.record') }}: <strong>{{ stats?.wins }}-{{ stats?.draws }}-{{ stats?.losses }}</strong>
+              {{ t('playerDetail.record') }}: <strong>{{ displayedStats?.wins }}-{{ displayedStats?.draws }}-{{ displayedStats?.losses }}</strong>
               <span class="ml-2 text-gray-400">({{ winRate }}% WR)</span>
             </div>
           </template>
         </div>
       </div>
+      <!-- Contextual section eliminada: se integró en la sección principal -->
 
       <!-- Habilidades -->
       <div class="bg-white p-5 rounded-xl shadow border space-y-4">

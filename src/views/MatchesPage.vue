@@ -4,6 +4,7 @@ import { t } from '@/localizations';
 import CenteredLoader from '../components/CenteredLoader.vue';
 import MatchCard from '../components/MatchCard.vue';
 import { useGroups } from "../stores/groups";
+import { useGroupContext } from "../stores/groupContext";
 import { usePlayers } from "../stores/players";
 import { listByGroup as apiListByGroup, create as apiCreateMatch, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
 import type { UUID, Match, MatchesGroupResponse } from "../types";
@@ -11,6 +12,7 @@ import type { UUID, Match, MatchesGroupResponse } from "../types";
 const groups = useGroups();
 const players = usePlayers();
 const loading = ref(true);
+const ctx = useGroupContext();
 
 /**
  * Initial fetch for groups & players on mount.
@@ -35,7 +37,11 @@ function nowLocalForInput() {
   )}:${pad(d.getMinutes())}`;
 }
 
+// selectedGroup continúa siendo la selección directa para crear/ver partidos.
+// Si hay un espacio activo (ctx.activeGroupId) restringimos el dropdown para mostrarlo primero.
 const selectedGroup = ref<UUID | "">("");
+// Lista filtrada de grupos según espacio activo (por ahora 1:1 espacio=grupo). Cuando exista jerarquía real, reemplazar filtro.
+const filteredGroups = computed(() => ctx.activeGroupId ? groups.items.filter(g => g._id === ctx.activeGroupId) : groups.items);
 const selectedPlayers = ref<UUID[]>([]);
 const when = ref<string>(nowLocalForInput());
 const items = ref<Match[]>([]);
@@ -76,6 +82,18 @@ watch(selectedGroup, async (gid) => {
       const db = new Date((b.scheduledAt ?? (b as any).createdAt) || 0).getTime();
       return db - da;
     });
+  }
+});
+
+// Sincronizar cuando se cambia el espacio (activeGroupId): si hay espacio pero selectedGroup distinto, lo limpiamos para forzar elección dentro del espacio.
+watch(() => ctx.activeGroupId, (spaceId) => {
+  if (spaceId && selectedGroup.value && selectedGroup.value !== spaceId) {
+    // Si la lógica de negocio decide que un "Espacio" == un grupo padre único, podemos auto-seleccionarlo.
+    // Por ahora solo limpiamos para que el usuario elija (o podríamos: selectedGroup.value = spaceId)
+    selectedGroup.value = spaceId as UUID;
+  }
+  if (!spaceId && !selectedGroup.value) {
+    // Nada seleccionado; estado neutro.
   }
 });
 
@@ -127,7 +145,7 @@ async function removeMatch(id: UUID) {
         <!-- Grupo -->
         <select v-model="selectedGroup" class="border rounded px-3 py-2">
           <option value="" disabled>{{ t('matches.chooseGroup') }}</option>
-          <option v-for="g in groups.items" :key="g._id" :value="g._id">
+          <option v-for="g in filteredGroups" :key="g._id" :value="g._id">
             {{ g.name }}
           </option>
         </select>
