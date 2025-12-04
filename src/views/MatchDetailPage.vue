@@ -358,7 +358,6 @@ async function applyRatingsNow() {
 
       <!-- ya finalizado -->
       <template v-if="isFinalized">
-        <!-- View mode -->
         <template v-if="!editingResult">
           <div class="flex items-center gap-3 flex-wrap">
             <div class="text-lg font-semibold">
@@ -374,34 +373,6 @@ async function applyRatingsNow() {
             {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
           </div>
         </template>
-        <!-- Edit mode -->
-        <template v-else>
-          <div class="flex items-center gap-2">
-            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreA" />
-            <span class="opacity-60">—</span>
-            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreB" />
-            <button @click="saveEditedResult" class="px-3 py-1 rounded bg-black text-white text-xs">{{ t('matchDetail.updateResult') }}</button>
-            <button @click="cancelEditResult" class="px-3 py-1 rounded border text-xs">{{ t('matchDetail.cancel') }}</button>
-          </div>
-          <p v-if="updateResultError" class="text-xs text-red-600 mt-2">{{ updateResultError }}</p>
-        </template>
-        <!-- View mode -->
-        <template v-if="!editingResult">
-          <div class="flex items-center gap-3 flex-wrap">
-            <div class="text-lg font-semibold">
-              {{ finalScore.a }} — {{ finalScore.b }}
-            </div>
-            <button
-              v-if="current?.canEdit && !ratingApplied"
-              @click="startEditResult"
-              class="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50"
-            >{{ t('matchDetail.editResult') }}</button>
-          </div>
-          <div class="text-xs opacity-60" v-if="finalizedAt">
-            {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
-          </div>
-        </template>
-        <!-- Edit mode -->
         <template v-else>
           <div class="flex items-center gap-2">
             <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreA" />
