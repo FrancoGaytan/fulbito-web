@@ -1,75 +1,45 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import { t } from '@/localizations';
 import CenteredLoader from '../components/CenteredLoader.vue';
 import MatchCard from '../components/MatchCard.vue';
 import { useGroups } from "../stores/groups";
-import { usePlayers } from "../stores/players";
-import { listByGroup as apiListByGroup, create as apiCreateMatch, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
-import type { UUID, Match, MatchesGroupResponse } from "../types";
+import { listByGroup as apiListByGroup, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
+import type { UUID, Match } from "../types";
 
+const router = useRouter();
 const groups = useGroups();
-const players = usePlayers();
 const loading = ref(true);
 
 /**
- * Initial fetch for groups & players on mount.
- * @returns {Promise<void>} Resolves when both stores have finished loading.
+ * Initial fetch for groups on mount.
  */
 onMounted(async () => {
   loading.value = true;
-  try {
-    await Promise.all([groups.fetch(), players.fetch()]);
-  } finally { loading.value = false; }
-});
 
-/**
- * Build current datetime-local string (YYYY-MM-DDTHH:mm) for input default.
- * @returns {string} A formatted datetime-local compatible value.
- */
-function nowLocalForInput() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(
-    d.getHours()
-  )}:${pad(d.getMinutes())}`;
-}
+  try {
+    await groups.fetch();
+  } finally {
+    loading.value = false;
+  }
+
+  if (groups.items.length === 1) {
+    selectedGroup.value = groups?.items[0]?._id ?? "";
+  }
+});
 
 const selectedGroup = ref<UUID | "">("");
-const selectedPlayers = ref<UUID[]>([]);
-const when = ref<string>(nowLocalForInput());
 const items = ref<Match[]>([]);
-const meta = ref<MatchesGroupResponse['meta'] | null>(null);
 const highlights = ref<Record<string, boolean>>({});
 
-const groupMemberIds = computed<string[]>(() => {
-  const g = groups.items.find((x) => x._id === selectedGroup.value);
-  if (!g) return [];
-  return ((g as any).members ?? (g as any).players ?? []).map((id: any) =>
-    String(id)
-  );
-});
-
-const groupMembers = computed(() => {
-  const set = new Set(groupMemberIds.value);
-  return players.items.filter((p) => set.has(String(p._id)));
-});
-
 /**
- * React to group selection changes: prune selected players not in group and fetch matches.
- * @param {UUID | ""} gid Group id chosen by the user (empty string means none).
- * @returns {Promise<void>} Resolves after matches (if any) are fetched.
+ * React to group selection changes: fetch matches for the selected group.
  */
 watch(selectedGroup, async (gid) => {
-  const set = new Set(groupMemberIds.value);
-  selectedPlayers.value = selectedPlayers.value.filter((id) =>
-    set.has(String(id))
-  );
-
   items.value = [];
   if (gid) {
     const resp = await apiListByGroup(gid as UUID);
-    meta.value = resp.meta;
     const list = resp.matches;
     items.value = [...list].sort((a, b) => {
       const da = new Date((a.scheduledAt ?? (a as any).createdAt) || 0).getTime();
@@ -80,33 +50,7 @@ watch(selectedGroup, async (gid) => {
 });
 
 /**
- * Create a new match with chosen players & optional scheduled timestamp.
- * Highlights the created card briefly.
- * Preconditions: selectedGroup set and at least two players chosen.
- * @returns {Promise<void>} Resolves after creation and UI state updates.
- */
-async function createMatch() {
-  if (!selectedGroup.value || selectedPlayers.value.length < 2) return;
-
-  const scheduledAt = when.value ? new Date(when.value).toISOString() : undefined;
-
-  const m = await apiCreateMatch(
-    selectedGroup.value as UUID,
-    selectedPlayers.value,
-    scheduledAt
-  );
-
-  items.value.unshift(m);
-  highlights.value[m._id] = true;
-  setTimeout(() => { delete highlights.value[m._id]; }, 600);
-  selectedPlayers.value = [];
-}
-
-
-/**
  * Delete match by id and remove from list; shows alert on failure.
- * @param {UUID} id Match identifier to delete.
- * @returns {Promise<void>}
  */
 async function removeMatch(id: UUID) {
   try {
@@ -122,46 +66,23 @@ async function removeMatch(id: UUID) {
 <template>
   <CenteredLoader v-if="loading" :label="t('matches.loading')" />
   <div v-else class="space-y-6">
-    <div class="bg-white p-4 rounded-xl border space-y-3">
-      <div class="grid md:grid-cols-[1fr,auto,auto] gap-3 items-center">
-        <!-- Grupo -->
-        <select v-model="selectedGroup" class="border rounded px-3 py-2">
-          <option value="" disabled>{{ t('matches.chooseGroup') }}</option>
-          <option v-for="g in groups.items" :key="g._id" :value="g._id">
-            {{ g.name }}
-          </option>
-        </select>
+    <!-- Group selector and create button -->
+    <div class="flex flex-wrap items-center gap-3">
+      <select v-model="selectedGroup" class="border rounded px-3 py-2 flex-1 min-w-0">
+        <option value="" disabled>{{ t('matches.chooseGroup') }}</option>
 
-        <!-- Fecha (opcional) -->
-        <input v-model="when" type="datetime-local" class="border rounded px-3 py-2" />
+        <option v-for="g in groups.items" :key="g._id" :value="g._id">
+          {{ g.name }}
+        </option>
+      </select>
 
-        <!-- Crear -->
-        <button class="px-4 py-2 rounded text-white disabled:opacity-50"
-          :class="meta?.canCreate ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
-          :disabled="!selectedGroup || selectedPlayers.length < 2 || !meta?.canCreate" @click="createMatch" title=""
-          :data-tip="!meta?.canCreate ? 'No tenés permiso para crear partidos en este grupo' : ''">
-          {{ t('matches.create') }}
-        </button>
-      </div>
-
-      <!-- Checkboxes de jugadores del grupo -->
-      <TransitionGroup name="groupMembers" tag="div" class="space-y-3" appear>
-        <div v-if="selectedGroup" class="flex flex-wrap gap-3">
-          <label v-for="p in groupMembers" :key="p._id" class="inline-flex items-center gap-2 border rounded px-3 py-2">
-            <input type="checkbox" :value="p._id" v-model="selectedPlayers" />
-
-            <span>{{ p.name }}</span>
-          </label>
-
-          <p v-if="groupMembers.length === 0" class="text-sm text-gray-500">{{ t('matches.groupNoPlayers') }}</p>
-        </div>
-
-        <p v-else class="text-sm text-gray-500">{{ t('matches.selectGroupSeePlayers') }}</p>
-      </TransitionGroup>
-
+      <button class="px-4 py-2 rounded bg-violet-600 hover:bg-violet-700 text-white font-medium shrink-0"
+        @click="router.push({ name: 'create-match' })">
+        + {{ t('matches.create') }}
+      </button>
     </div>
 
-    <!-- Listado de partidos con transición -->
+    <!-- List of matches -->
     <TransitionGroup name="match" tag="div" class="space-y-3" appear>
       <h1 v-if="selectedGroup" class="text-2xl font-semibold">{{ t('matches.matchesTitle') }}</h1>
 
