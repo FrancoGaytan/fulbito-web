@@ -78,6 +78,9 @@ const es: Dictionary = {
     noDate: "Sin fecha",
     deleteError: "No se pudo eliminar el partido",
     matchesTitle: "Partidos",
+    backToList: "Volver a partidos",
+    statusFinalized: "Finalizado",
+    statusUpcoming: "Próximo",
   },
   matchDetail: {
     loading: "Cargando partido…",
