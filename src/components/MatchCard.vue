@@ -35,14 +35,6 @@ function viewDate(m: Match) {
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <span class="text-sm opacity-60">{{ viewDate(match) }}</span>
-        <span v-if="match.status === 'finalized'"
-          class="text-xs font-medium px-2 py-0.5 rounded-full bg-gray-400 text-white">
-          {{ t('matches.statusFinalized') }}
-        </span>
-        <span v-else
-          class="text-xs font-medium px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">
-          {{ t('matches.statusUpcoming') }}
-        </span>
       </div>
 
       <div class="flex items-center gap-2">
