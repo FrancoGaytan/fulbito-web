@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from "vue";
 import { t } from '@/localizations';
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import * as matchesApi from "../lib/matches.service";
 import { usePlayers } from "../stores/players";
 import type { UUID, Match, RatingChange, MatchesGroupResponse, MyVotesResponse } from "../types";
@@ -22,6 +22,7 @@ const editingResult = ref(false);
 const editScoreA = ref<number | null>(null);
 const editScoreB = ref<number | null>(null);
 const updateResultError = ref<string | null>(null);
+const router = useRouter();
 
 /**
  * Fetch match (within its group list) & hydrate votes on mount.
@@ -57,7 +58,7 @@ async function hydrateMyVotes() {
     if (mv.ratingApplied) current.value.ratingApplied = true as any;
     if (mv.ratingChanges) current.value.ratingChanges = mv.ratingChanges as any;
   } catch (e) {
-  console.warn(t('matchDetail.voteError'), e);
+    console.warn(t('matchDetail.voteError'), e);
   }
 }
 
@@ -253,13 +254,13 @@ async function votePlayer(playerId: UUID, vote: 'up' | 'neutral' | 'down') {
   try {
     await matchesApi.voteMatchPlayer(current.value._id, playerId, vote);
     // Actualizamos myVotes localmente para no requerir refetch inmediato
-  if (!current.value.myVotes) current.value.myVotes = [] as any;
-  const mv = current.value.myVotes as UUID[];
-  if (!mv.includes(playerId)) mv.push(playerId);
+    if (!current.value.myVotes) current.value.myVotes = [] as any;
+    const mv = current.value.myVotes as UUID[];
+    if (!mv.includes(playerId)) mv.push(playerId);
     await hydrateMyVotes();
   } catch (e: any) {
     console.error(e);
-  alert(e?.message || t('matchDetail.voteError'));
+    alert(e?.message || t('matchDetail.voteError'));
   }
 }
 
@@ -281,8 +282,8 @@ async function applyRatingsNow() {
     localChanges.value = res.changes;
     await hydrateMyVotes();
   } catch (e: any) {
-  console.error(e);
-  alert(e?.message || t('matchDetail.applyError'));
+    console.error(e);
+    alert(e?.message || t('matchDetail.applyError'));
   } finally {
     applyingRatings.value = false;
   }
@@ -290,222 +291,225 @@ async function applyRatingsNow() {
 </script>
 
 <template>
-  <div class="space-y-6">
-      <div v-if="loading" class="fixed inset-0 flex items-center justify-center px-4">
-        <div class="flex flex-col items-center gap-4 text-center">
-          <div class="relative w-14 h-14">
-            <span class="absolute inset-0 rounded-full border-4 border-indigo-200"></span>
-            <span class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></span>
-          </div>
-          <p class="text-sm font-medium text-gray-700">{{ t('matchDetail.loading') }}</p>
-        </div>
-      </div>
-      <template v-if="!loading && current">
-    <div class="flex items-center gap-3">
-  <h1 class="text-2xl font-semibold">{{ t('matchDetail.title') }}</h1>
-      <button
-        class="ml-auto px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-          :disabled="loadingGen || !current || isFinalized || !current.canEdit"
-        @click="autoTeams"
-        v-if="current.canEdit"
-      >
-          {{ loadingGen ? t('matchDetail.generating') : t('matchDetail.generateTeams')}}
+  <div>
+    <div class="mb-4">
+      <button @click="router.back()" class="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1">
+        ← {{ t('matches.backToList') }}
       </button>
     </div>
 
-    <div v-if="hasTeams" class="grid md:grid-cols-2 gap-4">
-      <div class="bg-white p-4 rounded-xl shadow border space-y-2">
-  <h2 class="font-medium">{{ t('matchDetail.teamA') }}</h2>
-        <ul class="space-y-1">
-          <li v-for="p in teamA" :key="p.id" class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-gray-400" />
-            <span>{{ p.name }}</span>
-          </li>
-        </ul>
-      </div>
-      <div class="bg-white p-4 rounded-xl shadow border space-y-2">
-  <h2 class="font-medium">{{ t('matchDetail.teamB') }}</h2>
-        <ul class="space-y-1">
-          <li v-for="p in teamB" :key="p.id" class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full bg-gray-400" />
-            <span>{{ p.name }}</span>
-          </li>
-        </ul>
-      </div>
-    </div>
-
-    <!-- 2) Si TODAVÍA NO hay equipos, muestro "Jugadores anotados" -->
-    <div v-else class="bg-white p-4 rounded-xl shadow border space-y-2">
-  <h2 class="font-medium">{{ t('matchDetail.signedPlayers') }}</h2>
-      <p class="text-sm text-gray-500" v-if="participants.length === 0">
-  {{ t('matchDetail.noSignedPlayers') }}
-      </p>
-      <ul v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-        <li
-          v-for="p in participants"
-          :key="p.id"
-          class="flex items-center gap-2 border rounded px-3 py-2"
-        >
-          <span class="w-2 h-2 rounded-full bg-gray-400" />
-          <span>{{ p.name }}</span>
-        </li>
-      </ul>
-    </div>
-
-    <!-- ─────── Resultado / Finalización ─────── -->
-    <div class="bg-white p-4 rounded-xl shadow border">
-  <h2 class="font-medium mb-3">{{ t('matchDetail.result') }}</h2>
-
-      <!-- ya finalizado -->
-      <template v-if="isFinalized">
-        <!-- View mode -->
-        <template v-if="!editingResult">
-          <div class="flex items-center gap-3 flex-wrap">
-            <div class="text-lg font-semibold">
-              {{ finalScore.a }} — {{ finalScore.b }}
-            </div>
-            <button
-              v-if="current?.canEdit && !ratingApplied"
-              @click="startEditResult"
-              class="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50"
-            >{{ t('matchDetail.editResult') }}</button>
-          </div>
-          <div class="text-xs opacity-60" v-if="finalizedAt">
-            {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
-          </div>
-        </template>
-        <!-- Edit mode -->
-        <template v-else>
-          <div class="flex items-center gap-2">
-            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreA" />
-            <span class="opacity-60">—</span>
-            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreB" />
-            <button @click="saveEditedResult" class="px-3 py-1 rounded bg-black text-white text-xs">{{ t('matchDetail.updateResult') }}</button>
-            <button @click="cancelEditResult" class="px-3 py-1 rounded border text-xs">{{ t('matchDetail.cancel') }}</button>
-          </div>
-          <p v-if="updateResultError" class="text-xs text-red-600 mt-2">{{ updateResultError }}</p>
-        </template>
-        <!-- View mode -->
-        <template v-if="!editingResult">
-          <div class="flex items-center gap-3 flex-wrap">
-            <div class="text-lg font-semibold">
-              {{ finalScore.a }} — {{ finalScore.b }}
-            </div>
-            <button
-              v-if="current?.canEdit && !ratingApplied"
-              @click="startEditResult"
-              class="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50"
-            >{{ t('matchDetail.editResult') }}</button>
-          </div>
-          <div class="text-xs opacity-60" v-if="finalizedAt">
-            {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
-          </div>
-        </template>
-        <!-- Edit mode -->
-        <template v-else>
-          <div class="flex items-center gap-2">
-            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreA" />
-            <span class="opacity-60">—</span>
-            <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreB" />
-            <button @click="saveEditedResult" class="px-3 py-1 rounded bg-black text-white text-xs">{{ t('matchDetail.updateResult') }}</button>
-            <button @click="cancelEditResult" class="px-3 py-1 rounded border text-xs">{{ t('matchDetail.cancel') }}</button>
-          </div>
-          <p v-if="updateResultError" class="text-xs text-red-600 mt-2">{{ updateResultError }}</p>
-        </template>
-      </template>
-
-      <!-- todavía no finalizado -->
-      <template v-else>
-        <div class="flex items-center gap-2">
-          <input
-            type="number"
-            class="border rounded px-2 py-1 w-20"
-            v-model.number="scoreA"
-            min="0"
-          />
-          <span class="opacity-60">—</span>
-          <input
-            type="number"
-            class="border rounded px-2 py-1 w-20"
-            v-model.number="scoreB"
-            min="0"
-          />
-          <button
-            @click="finish"
-            class="ml-3 px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-            :disabled="isFinalized || !hasTeams || !current?.canEdit"
-          >
-            {{ t('matchDetail.finalize') }}
-          </button>
+    <div v-if="loading" class="fixed inset-0 flex items-center justify-center px-4">
+      <div class="flex flex-col items-center gap-4 text-center">
+        <div class="relative w-14 h-14">
+          <span class="absolute inset-0 rounded-full border-4 border-indigo-200"></span>
+          <span
+            class="absolute inset-0 rounded-full border-4 border-indigo-600 border-t-transparent animate-spin"></span>
         </div>
-  <p v-if="!hasTeams" class="mt-2 text-xs text-red-600">{{ t('matchDetail.needTeamsFirst') }}</p>
-      </template>
+        <p class="text-sm font-medium text-gray-700">{{ t('matchDetail.loading') }}</p>
+      </div>
     </div>
 
-    <!-- ─────── Feedback / Calificación Jugadores ─────── -->
-    <div v-if="isFinalized" class="bg-white p-4 rounded-xl shadow border space-y-4">
-      <template v-if="!ratingApplied">
-  <h2 class="font-medium flex items-center gap-2">{{ t('matchDetail.ratePlayers') }}
-          <span class="text-xs font-normal text-gray-500" v-if="playersForRating.length">({{ playersForRating.length }} pendientes)</span>
-        </h2>
-        <p v-if="playersForRating.length === 0" class="text-sm text-gray-500">
-          {{ t('matchDetail.allRated') }}
+    <template v-if="!loading && current">
+      <div class="flex items-center gap-3">
+        <h1 class="text-2xl font-semibold mb-2">{{ t('matchDetail.title') }}</h1>
+        <button class="ml-auto px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+          :disabled="loadingGen || !current || isFinalized || !current.canEdit" @click="autoTeams"
+          v-if="current.canEdit">
+          {{ loadingGen ? t('matchDetail.generating') : t('matchDetail.generateTeams') }}
+        </button>
+      </div>
+
+      <div v-if="hasTeams" class="grid md:grid-cols-2 gap-4">
+        <div class="bg-white p-4 rounded-xl shadow border space-y-2">
+          <h2 class="font-medium">{{ t('matchDetail.teamA') }}</h2>
+          <ul class="space-y-1">
+            <li v-for="p in teamA" :key="p.id" class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-gray-400" />
+              <span>{{ p.name }}</span>
+            </li>
+          </ul>
+        </div>
+        <div class="bg-white p-4 rounded-xl shadow border space-y-2">
+          <h2 class="font-medium">{{ t('matchDetail.teamB') }}</h2>
+          <ul class="space-y-1">
+            <li v-for="p in teamB" :key="p.id" class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-gray-400" />
+              <span>{{ p.name }}</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- 2) Si TODAVÍA NO hay equipos, muestro "Jugadores anotados" -->
+      <div v-else class="bg-white p-4 rounded-xl shadow border space-y-2">
+        <h2 class="font-medium">{{ t('matchDetail.signedPlayers') }}</h2>
+        <p class="text-sm text-gray-500" v-if="participants.length === 0">
+          {{ t('matchDetail.noSignedPlayers') }}
         </p>
         <ul v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
-          <li v-for="p in playersForRating" :key="p.id" class="flex items-center justify-between gap-2 border rounded px-3 py-2">
-            <span class="truncate">{{ p.name }}</span>
-            <div class="flex items-center gap-1">
-              <button @click="votePlayer(p.id as UUID, 'down')" class="w-8 h-8 flex items-center justify-center rounded bg-red-100 text-red-600 hover:bg-red-200" :title="t('matchDetail.bad')">👎</button>
-              <button @click="votePlayer(p.id as UUID, 'neutral')" class="w-8 h-8 flex items-center justify-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200" :title="t('matchDetail.neutral')">😐</button>
-              <button @click="votePlayer(p.id as UUID, 'up')" class="w-8 h-8 flex items-center justify-center rounded bg-green-100 text-green-600 hover:bg-green-200" :title="t('matchDetail.good')">👍</button>
-            </div>
+          <li v-for="p in participants" :key="p.id" class="flex items-center gap-2 border rounded px-3 py-2">
+            <span class="w-2 h-2 rounded-full bg-gray-400" />
+            <span>{{ p.name }}</span>
           </li>
         </ul>
-        <div class="pt-2 border-t space-y-2">
-          <button
-            v-if="canApply && playersForRating.length === 0"
-            @click="applyRatingsNow"
-            :disabled="applyingRatings"
-            class="px-4 py-2 rounded bg-black text-white disabled:opacity-40"
-          >
-            {{ applyingRatings ? t('matchDetail.applying') : t('matchDetail.apply') }}
-          </button>
-          <p v-else-if="playersForRating.length === 0" class="text-xs text-gray-500">
-            {{ t('matchDetail.waitingOrganizer') }}
+      </div>
+
+      <!-- ─────── Resultado / Finalización ─────── -->
+      <div class="bg-white p-4 rounded-xl shadow border mt-6">
+        <h2 class="font-medium mb-3">{{ t('matchDetail.result') }}</h2>
+
+        <!-- ya finalizado -->
+        <template v-if="isFinalized">
+          <!-- View mode -->
+          <template v-if="!editingResult">
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="text-lg font-semibold">
+                {{ finalScore.a }} — {{ finalScore.b }}
+              </div>
+              <button v-if="current?.canEdit && !ratingApplied" @click="startEditResult"
+                class="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50">{{ t('matchDetail.editResult')
+                }}</button>
+            </div>
+            <div class="text-xs opacity-60" v-if="finalizedAt">
+              {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
+            </div>
+          </template>
+          <!-- Edit mode -->
+          <template v-else>
+            <div class="flex items-center gap-2">
+              <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreA" />
+              <span class="opacity-60">—</span>
+              <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreB" />
+              <button @click="saveEditedResult" class="px-3 py-1 rounded bg-black text-white text-xs">{{
+                t('matchDetail.updateResult') }}</button>
+              <button @click="cancelEditResult" class="px-3 py-1 rounded border text-xs">{{ t('matchDetail.cancel')
+              }}</button>
+            </div>
+            <p v-if="updateResultError" class="text-xs text-red-600 mt-2">{{ updateResultError }}</p>
+          </template>
+          <!-- View mode -->
+          <template v-if="!editingResult">
+            <div class="flex items-center gap-3 flex-wrap">
+              <div class="text-lg font-semibold">
+                {{ finalScore.a }} — {{ finalScore.b }}
+              </div>
+              <button v-if="current?.canEdit && !ratingApplied" @click="startEditResult"
+                class="text-xs px-3 py-1 rounded border bg-white hover:bg-gray-50">{{ t('matchDetail.editResult')
+                }}</button>
+            </div>
+            <div class="text-xs opacity-60" v-if="finalizedAt">
+              {{ t('matchDetail.finalizedAt') }} {{ finalizedAt }}
+            </div>
+          </template>
+          <!-- Edit mode -->
+          <template v-else>
+            <div class="flex items-center gap-2">
+              <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreA" />
+              <span class="opacity-60">—</span>
+              <input type="number" min="0" class="border rounded px-2 py-1 w-20" v-model.number="editScoreB" />
+              <button @click="saveEditedResult" class="px-3 py-1 rounded bg-black text-white text-xs">{{
+                t('matchDetail.updateResult') }}</button>
+              <button @click="cancelEditResult" class="px-3 py-1 rounded border text-xs">{{ t('matchDetail.cancel')
+              }}</button>
+            </div>
+            <p v-if="updateResultError" class="text-xs text-red-600 mt-2">{{ updateResultError }}</p>
+          </template>
+        </template>
+
+        <!-- todavía no finalizado -->
+        <template v-else>
+          <div class="flex items-center gap-2">
+            <input type="number" class="border rounded px-2 py-1 w-20" v-model.number="scoreA" min="0" />
+            <span class="opacity-60">—</span>
+            <input type="number" class="border rounded px-2 py-1 w-20" v-model.number="scoreB" min="0" />
+            <button @click="finish" class="ml-3 px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+              :disabled="isFinalized || !hasTeams || !current?.canEdit">
+              {{ t('matchDetail.finalize') }}
+            </button>
+          </div>
+          <p v-if="!hasTeams" class="mt-2 text-xs text-red-600">{{ t('matchDetail.needTeamsFirst') }}</p>
+        </template>
+      </div>
+
+      <!-- ─────── Feedback / Calificación Jugadores ─────── -->
+      <div v-if="isFinalized" class="bg-white p-4 rounded-xl shadow border space-y-4">
+        <template v-if="!ratingApplied">
+          <h2 class="font-medium flex items-center gap-2">{{ t('matchDetail.ratePlayers') }}
+            <span class="text-xs font-normal text-gray-500" v-if="playersForRating.length">({{ playersForRating.length
+            }} pendientes)</span>
+          </h2>
+          <p v-if="playersForRating.length === 0" class="text-sm text-gray-500">
+            {{ t('matchDetail.allRated') }}
           </p>
-          <p v-else class="text-xs text-gray-500">
-            {{ t('matchDetail.pendingYourVotes') }}
-          </p>
-        </div>
-      </template>
-      <template v-else>
-  <h2 class="font-medium">{{ t('matchDetail.ratingChanges') }}</h2>
-  <p class="text-sm text-gray-500" v-if="(current?.ratingChanges?.length || 0) === 0">{{ t('matchDetail.noChanges') }}</p>
-        <table v-else class="w-full text-sm border-t">
-          <thead>
-            <tr class="text-left">
-              <th class="py-2 pr-2">{{ t('matchDetail.colPlayer') }}</th>
-              <th class="py-2 pr-2">{{ t('matchDetail.colBefore') }}</th>
-              <th class="py-2 pr-2">{{ t('matchDetail.colAfter') }}</th>
-              <th class="py-2 pr-2">{{ t('matchDetail.colDelta') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="c in (current?.ratingChanges || localChanges)" :key="c.playerId" class="border-t">
-              <td class="py-1 pr-2">{{ players.nameById(c.playerId) }}</td>
-              <td class="py-1 pr-2">{{ c.before }}</td>
-              <td class="py-1 pr-2">{{ c.after }}</td>
-              <td class="py-1 pr-2 font-medium" :class="c.delta>0 ? 'text-green-600' : c.delta<0 ? 'text-red-600' : 'text-gray-500'">{{ c.delta>0? '+'+c.delta : c.delta }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </template>
-    </div>
+          <ul v-else class="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <li v-for="p in playersForRating" :key="p.id"
+              class="flex items-center justify-between gap-2 border rounded px-3 py-2">
+              <span class="truncate">{{ p.name }}</span>
+              <div class="flex items-center gap-1">
+                <button @click="votePlayer(p.id as UUID, 'down')"
+                  class="w-8 h-8 flex items-center justify-center rounded bg-red-100 text-red-600 hover:bg-red-200"
+                  :title="t('matchDetail.bad')">👎</button>
+                <button @click="votePlayer(p.id as UUID, 'neutral')"
+                  class="w-8 h-8 flex items-center justify-center rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  :title="t('matchDetail.neutral')">😐</button>
+                <button @click="votePlayer(p.id as UUID, 'up')"
+                  class="w-8 h-8 flex items-center justify-center rounded bg-green-100 text-green-600 hover:bg-green-200"
+                  :title="t('matchDetail.good')">👍</button>
+              </div>
+            </li>
+          </ul>
+          <div class="pt-2 border-t space-y-2">
+            <button v-if="canApply && playersForRating.length === 0" @click="applyRatingsNow"
+              :disabled="applyingRatings" class="px-4 py-2 rounded bg-black text-white disabled:opacity-40">
+              {{ applyingRatings ? t('matchDetail.applying') : t('matchDetail.apply') }}
+            </button>
+            <p v-else-if="playersForRating.length === 0" class="text-xs text-gray-500">
+              {{ t('matchDetail.waitingOrganizer') }}
+            </p>
+            <p v-else class="text-xs text-gray-500">
+              {{ t('matchDetail.pendingYourVotes') }}
+            </p>
+          </div>
+        </template>
+        <template v-else>
+          <h2 class="font-medium">{{ t('matchDetail.ratingChanges') }}</h2>
+          <p class="text-sm text-gray-500" v-if="(current?.ratingChanges?.length || 0) === 0">{{
+            t('matchDetail.noChanges') }}</p>
+          <table v-else class="w-full text-sm border-t">
+            <thead>
+              <tr class="text-left">
+                <th class="py-2 pr-2">{{ t('matchDetail.colPlayer') }}</th>
+                <th class="py-2 pr-2">{{ t('matchDetail.colBefore') }}</th>
+                <th class="py-2 pr-2">{{ t('matchDetail.colAfter') }}</th>
+                <th class="py-2 pr-2">{{ t('matchDetail.colDelta') }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="c in (current?.ratingChanges || localChanges)" :key="c.playerId" class="border-t">
+                <td class="py-1 pr-2">{{ players.nameById(c.playerId) }}</td>
+                <td class="py-1 pr-2">{{ c.before }}</td>
+                <td class="py-1 pr-2">{{ c.after }}</td>
+                <td class="py-1 pr-2 font-medium"
+                  :class="c.delta > 0 ? 'text-green-600' : c.delta < 0 ? 'text-red-600' : 'text-gray-500'">{{ c.delta >
+                    0 ?
+                    '+' + c.delta : c.delta }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+      </div>
     </template>
   </div>
 </template>
 
 <style scoped>
-@keyframes spin { to { transform: rotate(360deg); } }
-.animate-spin { animation: spin 0.9s linear infinite; }
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 0.9s linear infinite;
+}
 </style>
