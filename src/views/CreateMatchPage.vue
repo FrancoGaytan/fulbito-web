@@ -21,6 +21,7 @@ onMounted(async () => {
 
   if (groups.items.length === 1) {
     selectedGroup.value = groups?.items[0]?._id ?? "";
+    await onGroupChange();
   }
 });
 
@@ -36,6 +37,10 @@ const selectedGroup = ref<UUID | "">("");
 const selectedPlayers = ref<UUID[]>([]);
 const when = ref<string>(nowLocalForInput());
 const meta = ref<MatchesGroupResponse['meta'] | null>(null);
+
+const canCreate = computed(
+  () => !!selectedGroup.value && selectedPlayers.value.length >= 2 && !!meta.value?.canCreate
+);
 
 const groupMemberIds = computed<string[]>(() => {
   const g = groups.items.find((x) => x._id === selectedGroup.value);
@@ -100,12 +105,10 @@ async function createMatch() {
 
         <input v-model="when" type="datetime-local" class="border rounded px-3 py-2" />
 
-        <button
-          class="px-4 py-2 rounded text-white disabled:opacity-50"
-          :class="meta?.canCreate ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
-          :disabled="!selectedGroup || selectedPlayers.length < 2 || !meta?.canCreate"
-          :title="!meta?.canCreate ? t('matches.noPermissionCreate') : ''"
-          @click="createMatch">
+        <button class="px-4 py-2 rounded text-white disabled:opacity-50"
+          :class="canCreate ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
+          :disabled="!canCreate"
+          :title="!meta?.canCreate ? t('matches.noPermissionCreate') : ''" @click="createMatch">
           {{ t('matches.create') }}
         </button>
       </div>
@@ -113,9 +116,7 @@ async function createMatch() {
       <!-- Player checkboxes -->
       <TransitionGroup name="groupMembers" tag="div" class="space-y-3" appear>
         <div v-if="selectedGroup" class="flex flex-wrap gap-3">
-          <label
-            v-for="p in groupMembers"
-            :key="p._id"
+          <label v-for="p in groupMembers" :key="p._id"
             class="inline-flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
             <input type="checkbox" :value="p._id" v-model="selectedPlayers" />
             <span>{{ p.name }}</span>
