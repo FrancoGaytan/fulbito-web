@@ -3,6 +3,8 @@ import { ref, computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { t } from '@/localizations';
 import CenteredLoader from '../components/CenteredLoader.vue';
+import AppSelect from '../components/AppSelect.vue';
+import AppDateTimePicker from '../components/AppDateTimePicker.vue';
 import { useGroups } from "../stores/groups";
 import { usePlayers } from "../stores/players";
 import { listByGroup as apiListByGroup, create as apiCreateMatch } from "../lib/matches.service";
@@ -81,53 +83,89 @@ async function createMatch() {
   <CenteredLoader v-if="loading" :label="t('matches.loading')" />
   <div v-else class="space-y-6">
     <div class="flex items-center gap-3">
-      <button @click="router.back()" class="text-sm text-gray-500 hover:text-gray-800 flex items-center gap-1">
+      <button @click="router.back()" class="text-sm text-gray-400 hover:text-white flex items-center gap-1 transition">
         ← {{ t('matches.backToList') }}
       </button>
     </div>
 
-    <h1 class="text-2xl font-semibold">{{ t('matches.create') }}</h1>
+    <div>
+      <h1 class="text-2xl font-bold text-white">Nuevo Partido</h1>
+      <p class="section-label mt-1">CONFIGURACIÓN DEL ENCUENTRO</p>
+    </div>
 
-    <div class="bg-white p-4 rounded-xl border space-y-4">
-      <!-- Group + Date + Create Button -->
-      <div class="grid md:grid-cols-[1fr,auto,auto] gap-3 items-center">
-        <select v-model="selectedGroup" @change="onGroupChange" class="border rounded px-3 py-2">
-          <option value="" disabled>{{ t('matches.chooseGroup') }}</option>
-          <option v-for="g in groups.items" :key="g._id" :value="g._id">
-            {{ g.name }}
-          </option>
-        </select>
+    <div class="card p-5 space-y-5">
+      <!-- Group selector -->
+      <div class="space-y-2">
+        <label class="section-label">SELECCIONAR GRUPO</label>
+        <AppSelect
+          v-model="selectedGroup"
+          :options="groups.items.map(g => ({ value: g._id, label: g.name }))"
+          :placeholder="t('matches.chooseGroup')"
+          @change="onGroupChange"
+        />
+      </div>
 
-        <input v-model="when" type="datetime-local" class="border rounded px-3 py-2" />
-
-        <button
-          class="px-4 py-2 rounded text-white disabled:opacity-50"
-          :class="meta?.canCreate ? 'bg-black hover:bg-gray-800' : 'bg-gray-400 cursor-not-allowed'"
-          :disabled="!selectedGroup || selectedPlayers.length < 2 || !meta?.canCreate"
-          :title="!meta?.canCreate ? t('matches.noPermissionCreate') : ''"
-          @click="createMatch">
-          {{ t('matches.create') }}
-        </button>
+      <!-- Date + Time -->
+      <div class="grid grid-cols-2 gap-4">
+        <div class="space-y-2">
+          <label class="section-label">FECHA</label>
+          <AppDateTimePicker v-model="when" />
+        </div>
+        <div class="space-y-2">
+          <label class="section-label">JUGADORES</label>
+          <div class="input-dark text-center font-bold text-accent">{{ selectedPlayers.length }} seleccionados</div>
+        </div>
       </div>
 
       <!-- Player checkboxes -->
       <TransitionGroup name="groupMembers" tag="div" class="space-y-3" appear>
-        <div v-if="selectedGroup" class="flex flex-wrap gap-3">
-          <label
-            v-for="p in groupMembers"
-            :key="p._id"
-            class="inline-flex items-center gap-2 border rounded px-3 py-2 cursor-pointer hover:bg-gray-50">
-            <input type="checkbox" :value="p._id" v-model="selectedPlayers" />
-            <span>{{ p.name }}</span>
-          </label>
+        <div v-if="selectedGroup">
+          <label class="section-label mb-3 block">CONVOCATORIA DE JUGADORES</label>
+          <div class="space-y-2 max-h-64 overflow-auto pr-1">
+            <label
+              v-for="p in groupMembers"
+              :key="p._id"
+              :class="[
+                'flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all border',
+                selectedPlayers.includes(p._id)
+                  ? 'bg-accent/10 border-accent/30'
+                  : 'bg-dark-800 border-dark-500/30 hover:border-dark-500/60'
+              ]"
+            >
+              <div class="flex items-center justify-center w-8 h-8 rounded-full bg-dark-600 text-xs font-bold text-accent shrink-0">
+                {{ p.name.charAt(0).toUpperCase() }}
+              </div>
+              <span class="flex-1 text-sm font-medium text-white">{{ p.name }}</span>
+              <div :class="[
+                'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
+                selectedPlayers.includes(p._id)
+                  ? 'border-accent bg-accent'
+                  : 'border-dark-500'
+              ]">
+                <svg v-if="selectedPlayers.includes(p._id)" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-dark-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <input type="checkbox" :value="p._id" v-model="selectedPlayers" class="sr-only" />
+            </label>
 
-          <p v-if="groupMembers.length === 0" class="text-sm text-gray-500">
-            {{ t('matches.groupNoPlayers') }}
-          </p>
+            <p v-if="groupMembers.length === 0" class="text-sm text-gray-500">
+              {{ t('matches.groupNoPlayers') }}
+            </p>
+          </div>
         </div>
 
         <p v-else class="text-sm text-gray-500">{{ t('matches.selectGroupSeePlayers') }}</p>
       </TransitionGroup>
+
+      <!-- Create button -->
+      <button
+        class="btn-accent"
+        :disabled="!selectedGroup || selectedPlayers.length < 2 || !meta?.canCreate"
+        :title="!meta?.canCreate ? t('matches.noPermissionCreate') : ''"
+        @click="createMatch">
+        {{ t('matches.create') }}
+      </button>
     </div>
   </div>
 </template>

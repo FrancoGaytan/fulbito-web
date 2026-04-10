@@ -28,22 +28,22 @@ function viewDate(m: Match) {
 
 <template>
   <div :class="[
-    'p-4 rounded-xl border shadow-sm transition-colors duration-700',
-    match.status === 'finalized' ? 'bg-gray-200' : 'bg-white',
-    highlight && 'bg-green-100 ring-1 ring-green-300'
+    'card p-4 transition-all duration-700',
+    match.status !== 'finalized' ? 'border border-accent/30 bg-accent/5' : 'opacity-75',
+    highlight && 'ring-1 ring-accent/40'
   ]">
     <div class="flex items-center justify-between">
-      <div class="flex items-center gap-2">
-        <span class="text-sm opacity-60">{{ viewDate(match) }}</span>
+      <div class="flex items-center gap-3">
+        <span class="text-sm text-gray-400">{{ viewDate(match) }}</span>
       </div>
 
       <div class="flex items-center gap-2">
         <button v-if="canDelete && match.canEdit" type="button" @click="remove"
-          class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-red-600 text-white hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors">
+          class="px-3 py-1.5 text-sm font-medium rounded-xl bg-red-500/20 text-red-400 hover:bg-red-500/30 transition">
           {{ t('matches.delete') }}
         </button>
         <router-link :to="`/match/${match._id}?group=${selectedGroup || ''}`"
-          class="inline-block px-3 py-1.5 text-sm font-medium rounded-md bg-gray-800 text-white hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-400/50 transition-colors">
+          class="px-4 py-1.5 text-sm font-medium rounded-xl bg-accent/15 text-accent hover:bg-accent/25 transition">
           {{ t('matches.open') }}
         </router-link>
       </div>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from "vue";
+import { ref, onMounted, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 import { t } from '@/localizations';
 import CenteredLoader from '../components/CenteredLoader.vue';
 import MatchCard from '../components/MatchCard.vue';
+import AppSelect from '../components/AppSelect.vue';
 import { useGroups } from "../stores/groups";
 import { listByGroup as apiListByGroup, deleteMatch as apiDeleteMatch } from "../lib/matches.service";
 import type { UUID, Match } from "../types";
@@ -68,15 +69,14 @@ async function removeMatch(id: UUID) {
   <div v-else class="space-y-6">
     <!-- Group selector and create button -->
     <div class="flex flex-wrap items-center gap-3">
-      <select v-model="selectedGroup" class="border rounded px-3 py-2 flex-1 min-w-0">
-        <option value="" disabled>{{ t('matches.chooseGroup') }}</option>
+      <AppSelect
+        v-model="selectedGroup"
+        :options="groups.items.map(g => ({ value: g._id, label: g.name }))"
+        :placeholder="t('matches.chooseGroup')"
+        class="flex-1 min-w-0"
+      />
 
-        <option v-for="g in groups.items" :key="g._id" :value="g._id">
-          {{ g.name }}
-        </option>
-      </select>
-
-      <button class="px-4 py-2 rounded bg-violet-600 hover:bg-violet-700 text-white font-medium shrink-0"
+      <button class="btn-accent !w-auto px-4 py-2 text-sm shrink-0"
         @click="router.push({ name: 'create-match' })">
         + {{ t('matches.create') }}
       </button>
@@ -84,7 +84,7 @@ async function removeMatch(id: UUID) {
 
     <!-- List of matches -->
     <TransitionGroup name="match" tag="div" class="space-y-3" appear>
-      <h1 v-if="selectedGroup" class="text-2xl font-semibold">{{ t('matches.matchesTitle') }}</h1>
+      <h1 v-if="selectedGroup" class="text-2xl font-bold text-white">{{ t('matches.matchesTitle') }}</h1>
 
       <MatchCard v-for="m in items" :key="m._id" :match="m" :highlight="highlights[m._id]"
         :selected-group="selectedGroup" :can-delete="true" @remove="removeMatch" />

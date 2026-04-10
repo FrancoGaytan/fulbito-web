@@ -136,23 +136,23 @@ async function removeGroup(id: UUID) {
   <CenteredLoader v-if="loading" :label="t('groups.loading')" />
   <template v-else>
     <!-- Crear grupo -->
-    <div class="bg-white border rounded-xl p-4 mb-6">
-      <h2 class="text-lg font-semibold mb-3">{{ t("groups.createTitle") }}</h2>
+    <div class="card p-5 mb-6 space-y-4">
+      <h2 class="font-bold text-white uppercase tracking-wide text-sm">{{ t("groups.createTitle") }}</h2>
       <div class="grid md:grid-cols-3 gap-3">
         <input
           v-model="gName"
           type="text"
           :placeholder="t('groups.namePlaceholder')"
-          class="border rounded px-3 py-2 w-full"
+          class="input-dark"
         />
         <input
           v-model="gDesc"
           type="text"
           :placeholder="t('groups.descPlaceholder')"
-          class="border rounded px-3 py-2 w-full"
+          class="input-dark"
         />
         <button
-          class="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
+          class="btn-accent"
           :disabled="!gName.trim() || creating"
           @click="createNewGroup"
         >

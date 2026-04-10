@@ -59,33 +59,36 @@ async function doReset(){
 </script>
 
 <template>
-  <div class="min-h-[70vh] flex items-center justify-center px-4">
-    <div class="w-full max-w-sm bg-white p-6 rounded-xl shadow border space-y-5">
-      <h1 class="text-lg font-semibold">
-  {{ step===1 ? t('forgot.step1') : step===2 ? t('forgot.step2') : t('forgot.step3') }}
-      </h1>
-
-      <div v-if="step===1" class="space-y-4">
-  <input v-model="email" type="email" :placeholder="t('forgot.email')" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-  <button @click="sendCode" :disabled="!email || loading" class="w-full rounded-lg bg-indigo-600 text-white text-sm font-medium py-2 disabled:opacity-50">{{ loading ? t('forgot.sending') : t('forgot.sendCode') }}</button>
-  <p v-if="devCode" class="text-[11px] text-gray-500">{{ t('forgot.devCode') }} <span class="font-mono">{{ devCode }}</span></p>
+  <div class="min-h-[85vh] flex items-center justify-center px-4">
+    <div class="w-full max-w-sm space-y-6">
+      <div class="text-center">
+        <div class="text-2xl font-extrabold text-accent tracking-tight select-none mb-6">⚽ FulbITo</div>
+        <h1 class="text-2xl font-bold text-white">
+          {{ step===1 ? t('forgot.step1') : step===2 ? t('forgot.step2') : t('forgot.step3') }}
+        </h1>
       </div>
 
-      <div v-else-if="step===2" class="space-y-4">
-        <p class="text-xs text-gray-600">{{ t('forgot.instruction') }}</p>
-        <input v-model="code" maxlength="6" :placeholder="t('forgot.code')" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none tracking-widest text-center" />
-        <div class="flex gap-2">
-          <button @click="verify" :disabled="code.length<4 || loading" class="flex-1 rounded-lg bg-indigo-600 text-white text-sm font-medium py-2 disabled:opacity-50">{{ loading ? t('forgot.verifying') : t('forgot.verify') }}</button>
+      <div class="card p-6 space-y-5">
+        <div v-if="step===1" class="space-y-4">
+          <input v-model="email" type="email" :placeholder="t('forgot.email')" class="input-dark" />
+          <button @click="sendCode" :disabled="!email || loading" class="btn-accent">{{ loading ? t('forgot.sending') : t('forgot.sendCode') }}</button>
+          <p v-if="devCode" class="text-[11px] text-gray-500">{{ t('forgot.devCode') }} <span class="font-mono text-accent">{{ devCode }}</span></p>
         </div>
-      </div>
 
-      <div v-else class="space-y-4">
-        <input v-model="newPassword" type="password" :placeholder="t('forgot.newPassword')" class="w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
-        <button @click="doReset" :disabled="newPassword.length<4 || loading" class="w-full rounded-lg bg-indigo-600 text-white text-sm font-medium py-2 disabled:opacity-50">{{ loading ? t('forgot.saving') : t('forgot.saveNew') }}</button>
-      </div>
+        <div v-else-if="step===2" class="space-y-4">
+          <p class="text-xs text-gray-400">{{ t('forgot.instruction') }}</p>
+          <input v-model="code" maxlength="6" :placeholder="t('forgot.code')" class="input-dark tracking-widest text-center" />
+          <button @click="verify" :disabled="code.length<4 || loading" class="btn-accent">{{ loading ? t('forgot.verifying') : t('forgot.verify') }}</button>
+        </div>
 
-      <p v-if="error" class="text-xs text-red-600">{{ error }}</p>
-  <router-link to="/login" class="text-xs underline text-gray-600">{{ t('forgot.backLogin') }}</router-link>
+        <div v-else class="space-y-4">
+          <input v-model="newPassword" type="password" :placeholder="t('forgot.newPassword')" class="input-dark" />
+          <button @click="doReset" :disabled="newPassword.length<4 || loading" class="btn-accent">{{ loading ? t('forgot.saving') : t('forgot.saveNew') }}</button>
+        </div>
+
+        <p v-if="error" class="text-xs text-red-400">{{ error }}</p>
+        <router-link to="/login" class="text-xs text-gray-500 hover:text-accent transition block">{{ t('forgot.backLogin') }}</router-link>
+      </div>
     </div>
   </div>
 </template>

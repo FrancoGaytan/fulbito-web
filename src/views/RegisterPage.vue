@@ -52,43 +52,56 @@ async function submit() {
 </script>
 
 <template>
-  <div class="min-h-[70vh] flex flex-col items-center justify-center px-4">
-    <div class="w-full max-w-4xl grid md:grid-cols-2 gap-10 items-center">
-      <div class="hidden md:flex flex-col gap-4">
-        <div class="relative group">
-          <img src="/src/assets/images/it-football.svg" alt="Fulbito Devs" class="w-full rounded-2xl shadow-lg ring-1 ring-black/10" />
-          <div class="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-600/20 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition" />
-        </div>
-        <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-fuchsia-600">{{ t('register.heroTitle') }}</h2>
-        <p class="text-sm text-gray-600 leading-relaxed max-w-sm">{{ t('register.heroCopy') }}</p>
+  <div class="min-h-[85vh] flex flex-col items-center justify-center px-4">
+    <div class="w-full max-w-sm mx-auto space-y-8">
+      <!-- Logo -->
+      <div class="text-center">
+        <div class="text-3xl font-extrabold text-accent tracking-tight select-none">⚽ FulbITo</div>
       </div>
-      <form @submit.prevent="submit" class="w-full max-w-sm mx-auto bg-white p-6 rounded-xl shadow border space-y-4">
-        <div class="space-y-1">
-          <h1 class="text-xl font-semibold tracking-tight">{{ t('register.title') }}</h1>
-          <p class="text-xs text-gray-500">{{ t('register.subtitle') }}</p>
+
+      <!-- Heading -->
+      <div class="text-center space-y-2">
+        <h1 class="text-3xl font-bold italic text-white">{{ t('register.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ t('register.subtitle') }}</p>
+      </div>
+
+      <!-- Form -->
+      <form @submit.prevent="submit" class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="section-label">EMAIL</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </span>
+            <input v-model="email" type="email" :placeholder="t('register.emailPlaceholder')" class="input-dark pl-10" required />
+          </div>
         </div>
-        <div class="space-y-3">
-          <div>
-            <input v-model="email" type="email" :placeholder="t('register.emailPlaceholder')" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+
+        <div class="space-y-1.5">
+          <label class="section-label">CONTRASEÑA</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </span>
+            <input v-model="password" type="password" placeholder="••••••••" class="input-dark pl-10" required />
           </div>
-          <div>
-            <input v-model="password" type="password" :placeholder="t('register.passwordPlaceholder')" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
-          </div>
-          <div class="flex items-center gap-2 text-xs select-none">
-            <input id="redir" type="checkbox" v-model="autoRedirect" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
-            <label for="redir">{{ t('register.autoRedirect') }}</label>
-          </div>
-          <button :disabled="loading" class="w-full px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium shadow hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
-            {{ loading ? t('register.actionLoading') : t('register.action') }}
-          </button>
-          <p v-if="error" class="text-red-600 text-xs">{{ error }}</p>
         </div>
-        <details v-if="debug" class="text-xs bg-gray-50 border rounded p-2">
-          <summary class="cursor-pointer">Debug response</summary>
-          <pre class="whitespace-pre-wrap break-all">{{ debug }}</pre>
-        </details>
-  <p class="text-xs text-center text-gray-600">{{ t('register.haveAccount') }} <router-link to="/login" class="underline font-medium">{{ t('register.loginCta') }}</router-link></p>
+
+        <button :disabled="loading" class="btn-accent">
+          {{ loading ? t('register.actionLoading') : t('register.action') }}
+        </button>
+
+        <p v-if="error" class="text-red-400 text-xs text-center">{{ error }}</p>
       </form>
+
+      <details v-if="debug" class="text-xs bg-dark-700 border border-dark-500/40 rounded-xl p-3 text-gray-400">
+        <summary class="cursor-pointer">Debug response</summary>
+        <pre class="whitespace-pre-wrap break-all mt-2">{{ debug }}</pre>
+      </details>
+
+      <p class="text-sm text-center text-gray-500">{{ t('register.haveAccount') }}
+        <router-link to="/login" class="text-accent font-semibold hover:text-accent-light transition">{{ t('register.loginCta') }}</router-link>
+      </p>
     </div>
   </div>
 </template>

@@ -19,10 +19,6 @@ const loading = ref(true)
 const name = ref('')
 const nickname = ref('')
 
-const half = Math.ceil(abilityKeys.length / 2)
-const leftKeys  = abilityKeys.slice(0, half)
-const rightKeys = abilityKeys.slice(half)
-
 const abilityScores = reactive<Record<AbilityKey, number>>(
   Object.fromEntries(abilityKeys.map(k => [k, 0])) as Record<AbilityKey, number>
 )
@@ -125,67 +121,62 @@ async function removePlayer(id: string) {
 <template>
 <CenteredLoader v-if="loading" :label="t('players.loading')" />
 <div v-else class="space-y-6">
-  <h1 class="text-2xl font-semibold">{{ t('players.title') }}</h1>
+  <h1 class="text-2xl font-bold text-white">{{ t('players.title') }}</h1>
 
-  <div class="bg-white p-4 rounded-xl shadow border space-y-4">
-  <h2 class="font-medium">{{ t('players.createTitle') }}</h2>
-
-    <div class="grid md:grid-cols-3 gap-3">
-  <input v-model="name" :placeholder="t('players.name')" class="border rounded px-3 py-2" />
-  <input v-model="nickname" :placeholder="t('players.nickname')" class="border rounded px-3 py-2" />
-  <button @click="createPlayer" class="px-4 py-2 rounded bg-black text-white">{{ t('players.create') }}</button>
+  <!-- Create Player Card -->
+  <div class="card p-5 space-y-5">
+    <div class="flex items-center gap-2">
+      <span class="text-accent text-lg">👤</span>
+      <h2 class="font-bold text-white uppercase tracking-wide text-sm">{{ t('players.createTitle') }}</h2>
     </div>
 
-    <div class="grid md:grid-cols-2 gap-6">
-  <!-- Columna izquierda -->
-  <div class="space-y-3">
-    <div v-for="a in leftKeys" :key="a" class="flex flex-wrap items-center gap-2 sm:gap-3">
-      <label class="flex-1 min-w-[110px] sm:w-48 text-sm text-gray-700 font-medium truncate">{{ abilityLabels[a] }}</label>
-      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="dec(a)">−</button>
-        <input
-          type="number" min="0" max="10" step="1"
-          v-model.number="abilityScores[a]" @change="normalize(a)"
-          class="w-14 sm:w-16 border rounded px-2 py-1 text-center"
-        />
-        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="inc(a)">+</button>
+    <div class="space-y-3">
+      <div class="space-y-1.5">
+        <label class="section-label">NOMBRE COMPLETO</label>
+        <input v-model="name" :placeholder="'Ej: Julian Alvarez'" class="input-dark" />
+      </div>
+      <div class="space-y-1.5">
+        <label class="section-label">APODO</label>
+        <input v-model="nickname" :placeholder="'Ej: La Araña'" class="input-dark" />
       </div>
     </div>
-  </div>
 
-  <!-- Columna derecha -->
-  <div class="space-y-3">
-    <div v-for="a in rightKeys" :key="a" class="flex flex-wrap items-center gap-2 sm:gap-3">
-      <label class="flex-1 min-w-[110px] sm:w-48 text-sm text-gray-700 font-medium truncate">{{ abilityLabels[a] }}</label>
-      <div class="flex items-center gap-1 sm:gap-2 shrink-0">
-        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="dec(a)">−</button>
-        <input
-          type="number" min="0" max="10" step="1"
-          v-model.number="abilityScores[a]" @change="normalize(a)"
-          class="w-14 sm:w-16 border rounded px-2 py-1 text-center"
-        />
-        <button type="button" class="px-2 py-1 border rounded hover:bg-gray-50 active:scale-95" @click="inc(a)">+</button>
+    <!-- Ability sliders -->
+    <div class="space-y-1">
+      <h3 class="section-label mb-3">ATRIBUTOS TÉCNICOS</h3>
+      <div class="space-y-4">
+        <div v-for="a in abilityKeys" :key="a" class="space-y-1">
+          <div class="flex items-center justify-between">
+            <label class="text-sm text-gray-300 font-medium">{{ abilityLabels[a] }}</label>
+            <span class="text-sm font-bold text-accent tabular-nums">{{ abilityScores[a] }}</span>
+          </div>
+          <input
+            type="range" min="0" max="10" step="1"
+            v-model.number="abilityScores[a]"
+            class="w-full accent-accent h-1.5 bg-dark-500 rounded-full appearance-none cursor-pointer
+              [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent [&::-webkit-slider-thumb]:shadow-[0_0_8px_rgba(34,197,94,0.5)]"
+          />
+        </div>
       </div>
     </div>
-  </div>
-  <span class="text-xs text-gray-500">{{ t('players.zeroHint') }}</span>
-</div>
 
-    <!-- listado (muestra badges con los scores) -->
-    <TransitionGroup name="player" tag="ul" class="grid md:grid-cols-2 gap-4" appear>
-      <PlayerCard
-        v-for="p in players.items"
-        :key="p._id"
-        :player="p"
-        :current-user-id="currentUserId"
-        :my-claimed-player-id="myClaimedPlayerId"
-        @open="(pl)=> router.push({ name: 'player-detail', params: { id: pl._id } })"
-        @remove="removePlayer"
-        @claim="claim"
-        @unclaim="unclaim"
-      />
-    </TransitionGroup>
+    <button @click="createPlayer" class="btn-accent" :disabled="!name.trim()">CONFIRMAR FICHAJE</button>
   </div>
+
+  <!-- Player list -->
+  <TransitionGroup name="player" tag="ul" class="grid md:grid-cols-2 gap-4" appear>
+    <PlayerCard
+      v-for="p in players.items"
+      :key="p._id"
+      :player="p"
+      :current-user-id="currentUserId"
+      :my-claimed-player-id="myClaimedPlayerId"
+      @open="(pl)=> router.push({ name: 'player-detail', params: { id: pl._id } })"
+      @remove="removePlayer"
+      @claim="claim"
+      @unclaim="unclaim"
+    />
+  </TransitionGroup>
 </div>
 </template>
 

@@ -17,40 +17,58 @@ async function submit() {
 </script>
 
 <template>
-  <div class="min-h-[70vh] flex flex-col items-center justify-center px-4">
-    <div class="w-full max-w-4xl grid md:grid-cols-2 gap-10 items-center">
-      <!-- Illustration / Hero copy -->
-      <div class="hidden md:flex flex-col gap-4">
-        <div class="relative group">
-          <img src="/src/assets/images/it-football.svg" alt="Fulbito Devs" class="w-full rounded-2xl shadow-lg ring-1 ring-black/10" />
-          <div class="absolute inset-0 rounded-2xl bg-gradient-to-tr from-indigo-600/20 to-fuchsia-600/10 opacity-0 group-hover:opacity-100 transition" />
-        </div>
-        <h2 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-fuchsia-600">{{ t('login.heroTitle') }}</h2>
-        <p class="text-sm text-gray-600 leading-relaxed max-w-sm">{{ t('login.heroCopy') }}</p>
+  <div class="min-h-[85vh] flex flex-col items-center justify-center px-4">
+    <div class="w-full max-w-sm mx-auto space-y-8">
+      <!-- Logo -->
+      <div class="text-center space-y-1">
+        <div class="text-3xl font-extrabold text-accent tracking-tight select-none">⚽ FulbITo</div>
       </div>
-      <!-- Auth form -->
-      <form @submit.prevent="submit" class="w-full max-w-sm mx-auto bg-white p-6 rounded-xl shadow border space-y-4">
-        <div class="space-y-1">
-          <h1 class="text-xl font-semibold tracking-tight">{{ t('login.title') }}</h1>
-          <p class="text-xs text-gray-500">{{ t('login.subtitle') }}</p>
-        </div>
-        <div class="space-y-3">
-          <div>
-            <input v-model="email" type="email" :placeholder="t('login.emailPlaceholder')" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
+
+      <!-- Heading -->
+      <div class="text-center space-y-2">
+        <h1 class="text-3xl font-bold italic text-white">{{ t('login.title') }}</h1>
+        <p class="text-sm text-gray-400">{{ t('login.subtitle') }}</p>
+      </div>
+
+      <!-- Form -->
+      <form @submit.prevent="submit" class="space-y-4">
+        <!-- Email -->
+        <div class="space-y-1.5">
+          <label class="section-label">EMAIL</label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" /></svg>
+            </span>
+            <input v-model="email" type="email" placeholder="nombre@ejemplo.com" class="input-dark pl-10" required />
           </div>
-          <div class="space-y-1">
-            <input v-model="password" type="password" :placeholder="t('login.passwordPlaceholder')" class="w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" required />
-            <div class="flex justify-end">
-              <RouterLink to="/forgot" class="text-[11px] text-indigo-600 hover:underline">{{ t('login.forgot') }}</RouterLink>
-            </div>
-          </div>
-          <button :disabled="auth.loading" class="w-full px-4 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-medium shadow hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition">
-            {{ auth.loading ? t('login.actionLoading') : t('login.action') }}
-          </button>
-          <p v-if="auth.error" class="text-red-600 text-xs">{{ auth.error }}</p>
         </div>
-        <p class="text-xs text-center text-gray-600">{{ t('login.noAccount') }} <router-link to="/register" class="underline font-medium">{{ t('login.registerCta') }}</router-link></p>
+
+        <!-- Password -->
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <label class="section-label">CONTRASEÑA</label>
+            <RouterLink to="/forgot" class="text-[11px] text-accent hover:text-accent-light transition">{{ t('login.forgot') }}</RouterLink>
+          </div>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+            </span>
+            <input v-model="password" type="password" placeholder="••••••••" class="input-dark pl-10" required />
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button :disabled="auth.loading" class="btn-accent">
+          {{ auth.loading ? t('login.actionLoading') : t('login.action') }}
+        </button>
+
+        <p v-if="auth.error" class="text-red-400 text-xs text-center">{{ auth.error }}</p>
       </form>
+
+      <!-- Register CTA -->
+      <p class="text-sm text-center text-gray-500">{{ t('login.noAccount') }}
+        <router-link to="/register" class="text-accent font-semibold hover:text-accent-light transition">{{ t('login.registerCta') }}</router-link>
+      </p>
     </div>
   </div>
 </template>
