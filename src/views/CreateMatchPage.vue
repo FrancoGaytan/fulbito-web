@@ -23,6 +23,7 @@ onMounted(async () => {
 
   if (groups.items.length === 1) {
     selectedGroup.value = groups?.items[0]?._id ?? "";
+    await onGroupChange();
   }
 });
 
@@ -38,6 +39,10 @@ const selectedGroup = ref<UUID | "">("");
 const selectedPlayers = ref<UUID[]>([]);
 const when = ref<string>(nowLocalForInput());
 const meta = ref<MatchesGroupResponse['meta'] | null>(null);
+
+const canCreate = computed(
+  () => !!selectedGroup.value && selectedPlayers.value.length >= 2 && !!meta.value?.canCreate
+);
 
 const groupMemberIds = computed<string[]>(() => {
   const g = groups.items.find((x) => x._id === selectedGroup.value);
