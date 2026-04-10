@@ -115,3 +115,13 @@ export const updatePlayerSkills = (
   () => _patch<Player, { abilities: Partial<Record<AbilityKey, number>> }>(`/api/players/${id}/skills`, { abilities }, signal),
   () => _patch<Player, { abilities: Partial<Record<AbilityKey, number>> }>(`/players/${id}/skills`, { abilities }, signal),
 ])
+
+export interface EloHistoryPoint {
+  date: string
+  before: number | null
+  after: number | null
+  delta: number | null
+}
+
+export const getPlayerEloHistory = (id: string, signal?: AbortSignal) =>
+  _get<EloHistoryPoint[]>(`/api/players/${id}/elo-history`, signal)

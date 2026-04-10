@@ -53,46 +53,56 @@ const isClaimed = () => !!props.player.userId;
 
 <template>
   <li
-    class="relative bg-white p-4 rounded-xl shadow border space-y-2 overflow-hidden cursor-pointer hover:shadow-md transition"
+    class="relative card p-4 space-y-3 overflow-hidden cursor-pointer hover:ring-1 hover:ring-accent/20 transition-all"
     @click="onRootClick"
   >
+    <!-- Delete button -->
     <button
       type="button"
       @click.stop="remove"
-      class="absolute top-2 right-2 w-7 h-7 inline-flex items-center justify-center rounded-md bg-black text-white text-xs hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-400/60 transition-colors"
+      class="absolute top-3 right-3 w-7 h-7 inline-flex items-center justify-center rounded-lg bg-red-500/20 text-red-400 text-xs hover:bg-red-500/30 transition"
       :title="t('players.deleteTitle')"
     >
-      <span class="-mt-px">✕</span>
+      <span>✕</span>
     </button>
-    <div class="font-medium pr-8 flex items-center gap-2">
-      <span>{{ player.name }}</span>
-      <span v-if="(player.gamesPlayed ?? 0) === 0" class="text-[10px] uppercase tracking-wide bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded">{{ t('players.new') }}</span>
+
+    <!-- Header row -->
+    <div class="flex items-center gap-3 pr-8">
+      <div class="w-10 h-10 rounded-full bg-dark-600 border border-dark-500/50 flex items-center justify-center text-accent font-bold text-sm shrink-0">
+        {{ player.name.charAt(0).toUpperCase() }}
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center gap-2 flex-wrap">
+          <span class="font-semibold text-white truncate">{{ player.name }}</span>
+          <span v-if="(player.gamesPlayed ?? 0) === 0" class="badge bg-yellow-500/20 text-yellow-400">{{ t('players.new') }}</span>
+        </div>
+        <div class="text-xs text-gray-500" v-if="player.nickname">@{{ player.nickname }}</div>
+      </div>
+    </div>
+
+    <!-- Ownership badges -->
+    <div class="flex items-center gap-2 flex-wrap">
       <template v-if="isMine()">
-        <span class="text-[10px] uppercase tracking-wide bg-green-100 text-green-700 px-1.5 py-0.5 rounded">{{ t('players.myProfile') }}</span>
-        <button
-          type="button"
-          @click.stop="unclaim"
-          class="text-[10px] uppercase tracking-wide bg-red-600 text-white px-2 py-0.5 rounded hover:bg-red-500"
-        >{{ t('players.unclaim') }}</button>
+        <span class="badge-green">{{ t('players.myProfile') }}</span>
+        <button type="button" @click.stop="unclaim" class="badge bg-red-500/20 text-red-400 hover:bg-red-500/30 transition cursor-pointer">{{ t('players.unclaim') }}</button>
       </template>
-      <span v-else-if="isClaimed()" class="text-[10px] uppercase tracking-wide bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded">{{ t('players.claimed') }}</span>
-      <button
-        v-else-if="!myClaimedPlayerId"
-        @click.stop="claim"
-        class="text-[10px] uppercase tracking-wide bg-blue-600 text-white px-2 py-0.5 rounded hover:bg-blue-500"
-      >{{ t('players.claim') }}</button>
+      <span v-else-if="isClaimed()" class="badge-gray">{{ t('players.claimed') }}</span>
+      <button v-else-if="!myClaimedPlayerId" @click.stop="claim" class="badge bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 transition cursor-pointer">{{ t('players.claim') }}</button>
     </div>
-    <div class="text-sm text-gray-500" v-if="player.nickname">@{{ player.nickname }}</div>
+
+    <!-- Stats -->
     <div v-if="player.gamesPlayed !== undefined" class="text-xs text-gray-500">
-      {{ t('players.gamesPlayed') }} <span class="font-medium">{{ player.gamesPlayed }}</span>
+      {{ t('players.gamesPlayed') }} <span class="font-bold text-white">{{ player.gamesPlayed }}</span>
     </div>
-    <div class="flex flex-wrap gap-1">
+
+    <!-- Ability badges -->
+    <div class="flex flex-wrap gap-1.5">
       <span
         v-for="([k, v]) in Object.entries(player.abilities || {})"
         :key="k"
-        class="text-xs px-2 py-0.5 rounded-full bg-gray-100 border"
+        class="text-[10px] px-2 py-0.5 rounded-full bg-dark-600 border border-dark-500/40 text-gray-300 font-medium"
       >
-        {{ abilityLabels[k as AbilityKey] ?? k }}: {{ v }}
+        {{ abilityLabels[k as AbilityKey] ?? k }}: <span class="text-accent">{{ v }}</span>
       </span>
     </div>
   </li>
