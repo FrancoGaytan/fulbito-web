@@ -57,6 +57,19 @@ const groupMembers = computed(() => {
   return players.items.filter((p) => set.has(String(p._id)));
 });
 
+function isPlayerSelected(playerId: UUID) {
+  return selectedPlayers.value.includes(playerId);
+}
+
+function togglePlayer(playerId: UUID) {
+  if (isPlayerSelected(playerId)) {
+    selectedPlayers.value = selectedPlayers.value.filter((id) => id !== playerId);
+    return;
+  }
+
+  selectedPlayers.value = [...selectedPlayers.value, playerId];
+}
+
 async function onGroupChange() {
   const set = new Set(groupMemberIds.value);
   selectedPlayers.value = selectedPlayers.value.filter((id) => set.has(String(id)));
@@ -127,12 +140,14 @@ async function createMatch() {
         <div v-if="selectedGroup">
           <label class="section-label mb-3 block">CONVOCATORIA DE JUGADORES</label>
           <div class="space-y-2 max-h-64 overflow-auto pr-1">
-            <label
+            <button
               v-for="p in groupMembers"
               :key="p._id"
+              type="button"
+              @click="togglePlayer(p._id)"
               :class="[
-                'flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer transition-all border',
-                selectedPlayers.includes(p._id)
+                'flex w-full items-center gap-3 rounded-xl px-4 py-3 cursor-pointer text-left transition-all border',
+                isPlayerSelected(p._id)
                   ? 'bg-accent/10 border-accent/30'
                   : 'bg-dark-800 border-dark-500/30 hover:border-dark-500/60'
               ]"
@@ -143,16 +158,15 @@ async function createMatch() {
               <span class="flex-1 text-sm font-medium text-white">{{ p.name }}</span>
               <div :class="[
                 'w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
-                selectedPlayers.includes(p._id)
+                isPlayerSelected(p._id)
                   ? 'border-accent bg-accent'
                   : 'border-dark-500'
               ]">
-                <svg v-if="selectedPlayers.includes(p._id)" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-dark-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                <svg v-if="isPlayerSelected(p._id)" xmlns="http://www.w3.org/2000/svg" class="w-3 h-3 text-dark-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
-              <input type="checkbox" :value="p._id" v-model="selectedPlayers" class="sr-only" />
-            </label>
+            </button>
 
             <p v-if="groupMembers.length === 0" class="text-sm text-gray-500">
               {{ t('matches.groupNoPlayers') }}
@@ -166,7 +180,7 @@ async function createMatch() {
       <!-- Create button -->
       <button
         class="btn-accent"
-        :disabled="!selectedGroup || selectedPlayers.length < 2 || !meta?.canCreate"
+        :disabled="!canCreate"
         :title="!meta?.canCreate ? t('matches.noPermissionCreate') : ''"
         @click="createMatch">
         {{ t('matches.create') }}

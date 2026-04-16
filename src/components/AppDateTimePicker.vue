@@ -72,6 +72,26 @@ function pickDay(d: Date) {
 function setHour(h: number) { selHour.value = ((h % 24) + 24) % 24; commit() }
 function setMin(m: number) { selMin.value = ((m % 60) + 60) % 60; commit() }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max)
+}
+
+function updateHourInput(value: string) {
+  if (value === '') return
+  const nextHour = Number.parseInt(value, 10)
+  if (Number.isNaN(nextHour)) return
+  selHour.value = clamp(nextHour, 0, 23)
+  commit()
+}
+
+function updateMinInput(value: string) {
+  if (value === '') return
+  const nextMin = Number.parseInt(value, 10)
+  if (Number.isNaN(nextMin)) return
+  selMin.value = clamp(nextMin, 0, 59)
+  commit()
+}
+
 function commit() {
   if (!selDate.value) return
   const d = new Date(selDate.value)
@@ -183,9 +203,16 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onOutside))
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
               </svg>
             </button>
-            <div class="w-10 h-8 flex items-center justify-center bg-dark-600 rounded-lg text-sm font-bold text-white tabular-nums">
-              {{ String(selHour).padStart(2,'0') }}
-            </div>
+            <input
+              :value="String(selHour).padStart(2, '0')"
+              type="number"
+              min="0"
+              max="23"
+              step="1"
+              inputmode="numeric"
+              class="w-12 h-8 bg-dark-600 rounded-lg text-center text-sm font-bold text-white tabular-nums outline-none border border-transparent focus:border-accent [appearance:textfield]"
+              @input="updateHourInput(($event.target as HTMLInputElement).value)"
+            />
             <button type="button" @click="setHour(selHour + 1)"
               class="p-1 rounded hover:bg-dark-600 text-gray-400 hover:text-white">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
@@ -194,18 +221,25 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onOutside))
             </button>
           </div>
           <div class="flex items-center text-gray-500 font-bold text-sm pt-0.5">:</div>
-          <!-- Minutes: snap to :00 :15 :30 :45 -->
+          <!-- Minutes -->
           <div class="flex flex-col items-center gap-0.5">
-            <button type="button" @click="setMin(selMin - 15)"
+            <button type="button" @click="setMin(selMin - 1)"
               class="p-1 rounded hover:bg-dark-600 text-gray-400 hover:text-white">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7" />
               </svg>
             </button>
-            <div class="w-10 h-8 flex items-center justify-center bg-dark-600 rounded-lg text-sm font-bold text-white tabular-nums">
-              {{ String(selMin).padStart(2,'0') }}
-            </div>
-            <button type="button" @click="setMin(selMin + 15)"
+            <input
+              :value="String(selMin).padStart(2, '0')"
+              type="number"
+              min="0"
+              max="59"
+              step="1"
+              inputmode="numeric"
+              class="w-12 h-8 bg-dark-600 rounded-lg text-center text-sm font-bold text-white tabular-nums outline-none border border-transparent focus:border-accent [appearance:textfield]"
+              @input="updateMinInput(($event.target as HTMLInputElement).value)"
+            />
+            <button type="button" @click="setMin(selMin + 1)"
               class="p-1 rounded hover:bg-dark-600 text-gray-400 hover:text-white">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7" />
