@@ -6,8 +6,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { abilityKeys, abilityLabels, type AbilityKey } from '../constants/abilities'
 import { getPlayer, updatePlayerSkills, getPlayerEloHistory, type EloHistoryPoint } from '../lib/players.service'
 import { usePlayers } from '../stores/players'
+import { useSpaces } from '../stores/spaces'
 import type { Player } from '../types'
 import { localStorageKeys } from '../utils/localStorageKeys'
+import { _patch } from '../lib/httpService'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,10 +17,15 @@ const id = route.params.id as string
 
 const loading = ref(true)
 const saving = ref(false)
+const savingProfile = ref(false)
 const error = ref<string | null>(null)
 const player = ref<Player | null>(null)
 const playersStore = usePlayers()
+const spacesStore = useSpaces()
 const eloHistory = ref<EloHistoryPoint[]>([])
+const editName = ref('')
+const editNickname = ref('')
+const showProfileEdit = ref(false)
 
 type ChartPoints = {
   coords: { x: number; y: number }[]
@@ -64,7 +71,9 @@ const currentUserId = computed(() => {
   } catch { return '' }
 })
 
-const canEdit = computed(() => !!player.value && player.value.userId === currentUserId.value)
+const isSpaceAdmin = computed(() => spacesStore.activeSpace?.isAdmin === true)
+const isOwner = computed(() => !!player.value && player.value.userId === currentUserId.value)
+const canEdit = computed(() => isOwner.value || isSpaceAdmin.value)
 
 const editAbilities = reactive<Record<AbilityKey, number>>({} as any)
 
@@ -77,10 +86,13 @@ function loadEditableAbilities(p: Player) {
 
 onMounted(async () => {
   loading.value = true
+  if (!spacesStore.spaces.length) await spacesStore.fetchSpaces()
   try {
     const p = await getPlayer(id)
     player.value = p
     loadEditableAbilities(p)
+    editName.value = p.name ?? ''
+    editNickname.value = (p as any).nickname ?? ''
     try {
       eloHistory.value = await getPlayerEloHistory(id)
     } catch { /* historial no crítico */ }
@@ -114,6 +126,24 @@ const drawsPct = computed(() => pct(stats.value?.draws || 0, stats.value?.total 
 const lossesPct = computed(() => pct(stats.value?.losses || 0, stats.value?.total || 0))
 
 function clamp(n: number) { return Math.max(0, Math.min(10, Math.round(n || 0))) }
+
+async function saveProfile() {
+  if (!player.value || !isOwner.value) return
+  savingProfile.value = true
+  error.value = null
+  try {
+    const updated = await _patch<Player, { name: string; nickname?: string }>(
+      `/api/players/${player.value._id}/profile`,
+      { name: editName.value.trim(), nickname: editNickname.value.trim() || undefined }
+    )
+    player.value = updated
+    showProfileEdit.value = false
+  } catch (e: any) {
+    error.value = e?.message || 'Error guardando perfil'
+  } finally {
+    savingProfile.value = false
+  }
+}
 
 async function saveSkills() {
   if (!player.value) return
@@ -156,6 +186,11 @@ async function saveSkills() {
             <div class="flex items-center gap-2 flex-wrap">
               <h2 class="text-xl font-bold text-white">{{ player.name }}</h2>
               <span v-if="player.nickname" class="text-gray-500">@{{ player.nickname }}</span>
+              <button v-if="isOwner" @click="showProfileEdit = true" class="text-gray-500 hover:text-accent transition ml-1" title="Editar perfil">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 13l6.5-6.5a2 2 0 012.828 2.828L11.828 15.828a4 4 0 01-1.414.94l-3 1 1-3a4 4 0 01.94-1.414z" />
+                </svg>
+              </button>
             </div>
             <div class="flex items-center gap-2 mt-1 flex-wrap">
               <span v-if="player.userId === currentUserId" class="badge-green">{{ t('playerDetail.myProfile') }}</span>
@@ -268,8 +303,90 @@ async function saveSkills() {
         <p v-if="error" class="text-xs text-red-400">{{ error }}</p>
       </div>
     </div>
+
+    <!-- Modal editar perfil -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div
+          v-if="showProfileEdit"
+          class="fixed inset-0 z-50 flex items-center justify-center p-4"
+          @click.self="showProfileEdit = false"
+        >
+          <!-- Backdrop -->
+          <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showProfileEdit = false"/>
+
+          <!-- Panel -->
+          <div class="relative z-10 w-full max-w-sm bg-dark-700 border border-dark-500/50 rounded-2xl shadow-2xl p-6 space-y-5">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-bold text-white">Editar perfil</h2>
+              <button @click="showProfileEdit = false" class="text-gray-400 hover:text-white transition">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="space-y-4">
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Nombre</label>
+                <input
+                  v-model="editName"
+                  type="text"
+                  placeholder="Tu nombre"
+                  maxlength="40"
+                  autofocus
+                  class="w-full bg-dark-800 border border-dark-500/50 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/60 transition"
+                />
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Nickname <span class="text-gray-600 normal-case font-normal">(opcional)</span></label>
+                <input
+                  v-model="editNickname"
+                  type="text"
+                  placeholder="ej: el pibe"
+                  maxlength="30"
+                  class="w-full bg-dark-800 border border-dark-500/50 rounded-xl px-4 py-2.5 text-white placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-accent/60 transition"
+                />
+              </div>
+            </div>
+
+            <div class="flex gap-3 pt-1">
+              <button
+                @click="saveProfile"
+                :disabled="savingProfile || !editName.trim()"
+                class="flex-1 btn-accent disabled:opacity-50"
+              >
+                {{ savingProfile ? 'Guardando...' : 'Guardar cambios' }}
+              </button>
+              <button
+                @click="showProfileEdit = false"
+                class="px-4 py-2 rounded-xl text-sm font-semibold text-gray-400 hover:text-white hover:bg-dark-600 transition"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.18s ease;
+}
+.modal-enter-active .relative,
+.modal-leave-active .relative {
+  transition: transform 0.18s ease, opacity 0.18s ease;
+}
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+.modal-enter-from .relative {
+  transform: scale(0.95);
+  opacity: 0;
+}
 </style>

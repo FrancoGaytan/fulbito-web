@@ -30,6 +30,10 @@ function getToken(): string | null {
   return localStorage.getItem(localStorageKeys.token);
 }
 
+function getSpaceId(): string | null {
+  return localStorage.getItem(localStorageKeys.activeSpaceId);
+}
+
 /**
  * Compose authenticated headers.
  * @param json Whether to include JSON content-type
@@ -37,6 +41,7 @@ function getToken(): string | null {
  */
 function buildHeaders(json: boolean) {
   const token = getToken();
+  const spaceId = getSpaceId();
   return {
     ...(json ? { "Content-Type": "application/json" } : {}),
     ...(token
@@ -46,6 +51,7 @@ function buildHeaders(json: boolean) {
             : `Bearer ${token}`,
         }
       : {}),
+    ...(spaceId ? { "x-space-id": spaceId } : {}),
   } as Record<string, string>;
 }
 

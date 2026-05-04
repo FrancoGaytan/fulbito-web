@@ -13,6 +13,41 @@ export interface LoginResponse {
 // Common
 export type UUID = string;
 
+// Spaces
+export interface Space {
+  _id: UUID;
+  name: string;
+  description?: string;
+  owner: UUID;
+  inviteCode?: string;   // solo visible para admins
+  role?: 'admin' | 'member';
+  isAdmin?: boolean;
+  memberCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SpacePlayer {
+  _id: UUID;
+  spaceId: UUID;
+  userId: UUID;
+  name: string;
+  nickname?: string;
+  abilities?: Partial<Record<AbilityKey, number>>;
+  rating: number;
+  gamesPlayed: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SpaceMember {
+  userId: UUID;
+  role: 'admin' | 'member';
+  joinedAt?: string;
+  email?: string;
+  player?: SpacePlayer | null;
+}
+
 // Players
 export type Ability =
   | "attack"
