@@ -1,7 +1,15 @@
 import { defineStore } from 'pinia'
 import { login as apiLogin } from '../lib/auth.service'
 import { localStorageKeys } from '../utils/localStorageKeys'
+import { useSpaces } from './spaces'
 import type { LoginRequest } from '../types'
+
+function clearSpacesState() {
+  localStorage.removeItem(localStorageKeys.activeSpaceId)
+  // Limpiar el store en memoria para que no queden datos del usuario anterior
+  const spacesStore = useSpaces()
+  spacesStore.$patch({ spaces: [], activeSpaceId: null, loading: false, error: null })
+}
 
 export const useAuth = defineStore('auth', {
   state: () => ({
@@ -16,6 +24,8 @@ export const useAuth = defineStore('auth', {
     async login(payload: LoginRequest) {
       this.loading = true
       this.error = null
+      // Limpiar estado del usuario anterior antes de loguear uno nuevo
+      clearSpacesState()
       try {
         const token = await apiLogin(payload)
         this.token = token
@@ -30,6 +40,7 @@ export const useAuth = defineStore('auth', {
     logout() {
       this.token = ''
       localStorage.removeItem(localStorageKeys.token)
+      clearSpacesState()
     },
   },
 })
