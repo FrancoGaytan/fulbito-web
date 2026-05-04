@@ -33,6 +33,13 @@ function normalize(key: AbilityKey) { abilityScores[key] = clamp(abilityScores[k
  * Resets form fields on success.
  * @returns {Promise<void>}
  */
+function onCardPointerDown(e: PointerEvent) {
+  const tag = (e.target as HTMLElement).tagName;
+  if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+    (document.activeElement as HTMLElement)?.blur();
+  }
+}
+
 async function createPlayer() {
   if (!name.value.trim()) return
   const payload: Partial<Record<AbilityKey, number>> = {}
@@ -124,7 +131,7 @@ async function removePlayer(id: string) {
   <h1 class="text-2xl font-bold text-white">{{ t('players.title') }}</h1>
 
   <!-- Create Player Card -->
-  <div class="card p-5 space-y-5">
+  <div class="card p-5 space-y-5" @pointerdown="onCardPointerDown">
     <div class="flex items-center gap-2">
       <span class="text-accent text-lg">👤</span>
       <h2 class="font-bold text-white uppercase tracking-wide text-sm">{{ t('players.createTitle') }}</h2>
