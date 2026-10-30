@@ -191,7 +191,7 @@ function goBack() {
     router.back();
     return;
   }
-  router.push({
+  router.replace({
     name: 'match-detail',
     params: { id: match.value._id },
     query: { group: match.value.groupId },
