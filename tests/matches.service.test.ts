@@ -24,6 +24,13 @@ _post._post.mockImplementation(async (path: string, body: any) => {
   if (path === '/matches') {
     return { _id: 'created1', groupId: body.groupId, participants: body.participants }
   }
+  if (path === '/matches/m1/substitution') {
+    return {
+      _id: 'm1',
+      participants: ['p2', body.incomingPlayerId],
+      teams: [{ players: [body.incomingPlayerId] }, { players: ['p2'] }],
+    }
+  }
   throw new Error('Unexpected POST ' + path)
 })
 
@@ -38,5 +45,13 @@ describe('matches.service', () => {
     const m = await matches.create('g1' as any, ['p1','p2'], '2024-01-01T10:00:00Z')
     expect(m._id).toBe('created1')
     expect(m.participants).toEqual(['p1','p2'])
+  })
+
+  it('substitutePlayer posts the outgoing and incoming player ids', async () => {
+    const payload = { outgoingPlayerId: 'p1', incomingPlayerId: 'p3' }
+    const m = await matches.substitutePlayer('m1' as any, payload)
+
+    expect(_post._post).toHaveBeenCalledWith('/matches/m1/substitution', payload)
+    expect(m.participants).toContain('p3')
   })
 })
