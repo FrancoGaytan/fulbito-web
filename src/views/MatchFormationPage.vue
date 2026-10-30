@@ -91,7 +91,7 @@ function slotsForTeam(team: TeamKey): FormationSlot[] {
       shortLabel: short,
       index: index + 1,
       x: getHorizontalPositions(counts[role])[index] ?? 50,
-      y: sideY[team][role],
+      y: sideY[role],
     })),
   );
 }
