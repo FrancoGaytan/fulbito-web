@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   createDefaultFormation,
+  getFormationCounts,
   getHorizontalPositions,
   getTeamLinePositions,
 } from '../src/utils/formation';
@@ -30,5 +31,15 @@ describe('formation helpers', () => {
       expect(Object.values(formation).reduce((sum, count) => sum + count, 0)).toBe(playerCount);
       expect(formation.goalkeeper).toBe(playerCount > 0 ? 1 : 0);
     }
+  });
+
+  it('falls back to a default formation when a team has no saved counts', () => {
+    expect(getFormationCounts(undefined, 'A', 6)).toEqual(createDefaultFormation(6));
+    expect(getFormationCounts({ B: createDefaultFormation(5) }, 'A', 6)).toEqual(
+      createDefaultFormation(6),
+    );
+    expect(getFormationCounts({ B: createDefaultFormation(5) }, 'B', 6)).toEqual(
+      createDefaultFormation(5),
+    );
   });
 });

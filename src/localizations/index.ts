@@ -157,6 +157,7 @@ const es: Dictionary = {
     noTeams: "Primero tenés que generar los equipos del partido.",
     loading: "Cargando partido…",
     loadError: "No se pudo cargar el partido",
+    playersLoadError: "No se pudieron cargar algunos nombres de jugadores; se muestran sus identificadores.",
     retry: "Reintentar",
     removeAssignment: "Quitar jugador",
     reset: "Reiniciar formaciones",
