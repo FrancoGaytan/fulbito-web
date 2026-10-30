@@ -1,5 +1,5 @@
 import { _del, _get, _post } from "../lib/httpService";
-import type { Match, UUID, PlayerFeedback, GenerateTeamsResponse, RatingChange, MatchesGroupResponse, MyVotesResponse, VoteProgressResponse } from "../types";
+import type { Match, UUID, PlayerFeedback, GenerateTeamsResponse, MatchSubstitution, RatingChange, MatchesGroupResponse, MyVotesResponse, VoteProgressResponse } from "../types";
 
 /**
  * List matches belonging to a specific group along with meta (permissions).
@@ -54,6 +54,15 @@ export const addParticipant = (
     { playerId },
     signal
   );
+
+/**
+ * Replace a participant with another group player in the same team.
+ * @param id Match id
+ * @param payload Outgoing and incoming player ids
+ * @returns Updated match
+ */
+export const substitutePlayer = (id: UUID, payload: MatchSubstitution) =>
+  _post<Match>(`/matches/${id}/substitution`, payload);
 
 /**
  * Generate teams for a match (optionally AI assisted) deterministically using a seed.

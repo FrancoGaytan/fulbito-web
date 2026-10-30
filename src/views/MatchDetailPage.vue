@@ -3,6 +3,7 @@ import { onMounted, ref, computed } from "vue";
 import { t } from '@/localizations';
 import { useRoute, useRouter } from "vue-router";
 import * as matchesApi from "../lib/matches.service";
+import * as groupsApi from "../lib/groups.service";
 import { usePlayers } from "../stores/players";
 import type { UUID, Match, RatingChange, MatchesGroupResponse, MyVotesResponse } from "../types";
 
@@ -22,6 +23,14 @@ const editingResult = ref(false);
 const editScoreA = ref<number | null>(null);
 const editScoreB = ref<number | null>(null);
 const updateResultError = ref<string | null>(null);
+const substitutionMode = ref(false);
+const substitutionModal = ref(false);
+const substitutionTarget = ref<{ id: UUID; name: string; teamName: string } | null>(null);
+const groupPlayerIds = ref<UUID[]>([]);
+const selectedSubstituteId = ref<UUID | null>(null);
+const loadingSubstitutes = ref(false);
+const savingSubstitution = ref(false);
+const substitutionError = ref<string | null>(null);
 const router = useRouter();
 
 /**
@@ -205,6 +214,60 @@ const teamB = computed(() => {
   return ids.map((id) => ({ id, name: players.nameById(id) }));
 });
 
+const substitutionCandidates = computed(() => {
+  const participants = new Set((current.value?.participants ?? []).map(String));
+  const groupMembers = new Set(groupPlayerIds.value.map(String));
+  return players.items
+    .filter(player => groupMembers.has(player._id) && !participants.has(player._id))
+    .map(player => ({ id: player._id, name: player.name }));
+});
+
+async function openSubstitution(player: { id: UUID; name: string }, teamName: string) {
+  if (!current.value || !current.value.canEdit || isFinalized.value || ratingApplied.value) return;
+  substitutionTarget.value = { ...player, teamName };
+  selectedSubstituteId.value = null;
+  substitutionError.value = null;
+  substitutionModal.value = true;
+  loadingSubstitutes.value = true;
+  try {
+    const group = await groupsApi.getGroup(groupId);
+    groupPlayerIds.value = (group.members ?? []).map(String);
+  } catch (error: any) {
+    substitutionError.value = error?.message || t('matchDetail.substitutionError');
+  } finally {
+    loadingSubstitutes.value = false;
+  }
+}
+
+function closeSubstitution() {
+  if (savingSubstitution.value) return;
+  substitutionModal.value = false;
+  substitutionTarget.value = null;
+  selectedSubstituteId.value = null;
+  substitutionError.value = null;
+}
+
+async function confirmSubstitution() {
+  if (!current.value || !substitutionTarget.value || !selectedSubstituteId.value) return;
+  savingSubstitution.value = true;
+  substitutionError.value = null;
+  try {
+    current.value = await matchesApi.substitutePlayer(current.value._id, {
+      outgoingPlayerId: substitutionTarget.value.id,
+      incomingPlayerId: selectedSubstituteId.value,
+    });
+    substitutionModal.value = false;
+    substitutionMode.value = false;
+    substitutionTarget.value = null;
+    selectedSubstituteId.value = null;
+    await hydrateMyVotes();
+  } catch (error: any) {
+    substitutionError.value = error?.message || t('matchDetail.substitutionError');
+  } finally {
+    savingSubstitution.value = false;
+  }
+}
+
 
 /**
  * Remaining players needing a vote from current user (excludes those already voted on).
@@ -311,11 +374,26 @@ async function applyRatingsNow() {
     <template v-if="!loading && current">
       <div class="flex items-center gap-3 mb-4">
         <h1 class="text-2xl font-bold text-white">{{ t('matchDetail.title') }}</h1>
-        <button class="ml-auto btn-accent !w-auto px-5 py-2"
-          :disabled="loadingGen || !current || isFinalized || !current.canEdit" @click="autoTeams"
-          v-if="current.canEdit">
-          {{ loadingGen ? t('matchDetail.generating') : t('matchDetail.generateTeams') }}
-        </button>
+        <div class="ml-auto flex items-center gap-2">
+          <button v-if="current.canEdit && hasTeams && !isFinalized && !ratingApplied"
+            type="button" class="btn-outline !w-10 !h-10 !p-0 flex items-center justify-center"
+            :class="substitutionMode ? '!border-accent !text-accent bg-accent/10' : ''"
+            :aria-label="t('matchDetail.substitutions')" :title="t('matchDetail.substitutions')"
+            :aria-pressed="substitutionMode" @click="substitutionMode = !substitutionMode">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+              stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5" aria-hidden="true">
+              <path d="M4 7h15l-3-3" />
+              <path d="m19 7-3 3" />
+              <path d="M20 17H5l3 3" />
+              <path d="m5 17 3-3" />
+            </svg>
+          </button>
+          <button class="btn-accent !w-auto px-5 py-2"
+            :disabled="loadingGen || !current || isFinalized || !current.canEdit" @click="autoTeams"
+            v-if="current.canEdit">
+            {{ loadingGen ? t('matchDetail.generating') : t('matchDetail.generateTeams') }}
+          </button>
+        </div>
       </div>
 
       <!-- Teams -->
@@ -325,7 +403,19 @@ async function applyRatingsNow() {
           <ul class="space-y-1.5">
             <li v-for="p in teamA" :key="p.id" class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-accent" />
-              <span class="text-sm text-gray-200">{{ p.name }}</span>
+              <span class="text-sm text-gray-200 flex-1">{{ p.name }}</span>
+              <button v-if="substitutionMode" type="button"
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-accent bg-accent/10 hover:bg-accent/20 transition"
+                :aria-label="`${t('matchDetail.swapPlayer')}: ${p.name}`" :title="t('matchDetail.swapPlayer')"
+                @click="openSubstitution(p, t('matchDetail.teamA'))">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" aria-hidden="true">
+                  <path d="M4 7h15l-3-3" />
+                  <path d="m19 7-3 3" />
+                  <path d="M20 17H5l3 3" />
+                  <path d="m5 17 3-3" />
+                </svg>
+              </button>
             </li>
           </ul>
         </div>
@@ -334,7 +424,19 @@ async function applyRatingsNow() {
           <ul class="space-y-1.5">
             <li v-for="p in teamB" :key="p.id" class="flex items-center gap-2">
               <span class="w-2 h-2 rounded-full bg-blue-400" />
-              <span class="text-sm text-gray-200">{{ p.name }}</span>
+              <span class="text-sm text-gray-200 flex-1">{{ p.name }}</span>
+              <button v-if="substitutionMode" type="button"
+                class="w-8 h-8 rounded-lg flex items-center justify-center text-blue-300 bg-blue-400/10 hover:bg-blue-400/20 transition"
+                :aria-label="`${t('matchDetail.swapPlayer')}: ${p.name}`" :title="t('matchDetail.swapPlayer')"
+                @click="openSubstitution(p, t('matchDetail.teamB'))">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                  stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4" aria-hidden="true">
+                  <path d="M4 7h15l-3-3" />
+                  <path d="m19 7-3 3" />
+                  <path d="M20 17H5l3 3" />
+                  <path d="m5 17 3-3" />
+                </svg>
+              </button>
             </li>
           </ul>
         </div>
@@ -466,6 +568,73 @@ async function applyRatingsNow() {
             </div>
           </div>
         </template>
+      </div>
+
+      <div v-if="substitutionModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+        @click.self="closeSubstitution" @keydown.esc="closeSubstitution">
+        <section role="dialog" aria-modal="true" :aria-label="t('matchDetail.substitutionTitle')"
+          class="w-full max-w-md overflow-hidden rounded-2xl border border-dark-500/50 bg-dark-800 shadow-2xl">
+          <div class="p-5 border-b border-dark-500/40 bg-gradient-to-br from-accent/15 via-transparent to-blue-400/10">
+            <div class="flex items-start justify-between gap-4">
+              <div>
+                <p class="text-xs font-bold uppercase tracking-[0.18em] text-accent">{{ t('matchDetail.substitutions') }}</p>
+                <h2 class="mt-1 text-xl font-bold text-white">{{ t('matchDetail.substitutionTitle') }}</h2>
+                <p class="mt-1 text-sm text-gray-400">{{ t('matchDetail.substitutionDescription') }}</p>
+              </div>
+              <button type="button" class="w-8 h-8 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition"
+                :aria-label="t('matchDetail.cancel')" @click="closeSubstitution">×</button>
+            </div>
+          </div>
+
+          <div class="p-5 space-y-4">
+            <div class="rounded-xl border border-dark-500/40 bg-dark-900/70 p-3">
+              <p class="mb-2 text-[11px] font-semibold uppercase tracking-wider text-gray-500">{{ t('matchDetail.outgoingPlayer') }} · {{ substitutionTarget?.teamName }}</p>
+              <div class="flex items-center gap-3">
+                <span class="flex w-9 h-9 items-center justify-center rounded-full bg-red-400/10 text-red-300">↓</span>
+                <span class="font-semibold text-white">{{ substitutionTarget?.name }}</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 class="mb-1 font-semibold text-white">{{ t('matchDetail.whoEnters') }}</h3>
+              <p class="mb-3 text-xs text-gray-400">{{ t('matchDetail.selectSubstitute') }}</p>
+              <div v-if="loadingSubstitutes" class="rounded-xl border border-dark-500/40 p-4 text-center text-sm text-gray-400">
+                {{ t('matchDetail.loadingSubstitutes') }}
+              </div>
+              <p v-else-if="substitutionCandidates.length === 0" class="rounded-xl border border-dark-500/40 p-4 text-center text-sm text-gray-400">
+                {{ t('matchDetail.noSubstitutes') }}
+              </p>
+              <ul v-else class="max-h-56 space-y-2 overflow-y-auto pr-1">
+                <li v-for="candidate in substitutionCandidates" :key="candidate.id">
+                  <button type="button"
+                    class="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition"
+                    :class="selectedSubstituteId === candidate.id
+                      ? 'border-accent bg-accent/10'
+                      : 'border-dark-500/40 bg-dark-900/50 hover:border-dark-400'"
+                    :aria-pressed="selectedSubstituteId === candidate.id"
+                    @click="selectedSubstituteId = candidate.id; substitutionError = null">
+                    <span class="flex w-9 h-9 items-center justify-center rounded-full bg-green-400/10 text-green-300">↑</span>
+                    <span class="flex-1 font-medium text-gray-100">{{ candidate.name }}</span>
+                    <span v-if="selectedSubstituteId === candidate.id" class="text-accent">✓</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <p v-if="substitutionError" class="rounded-lg border border-red-400/20 bg-red-400/10 px-3 py-2 text-sm text-red-300">
+              {{ substitutionError }}
+            </p>
+            <div class="flex gap-2 pt-1">
+              <button type="button" class="btn-outline flex-1" :disabled="savingSubstitution" @click="closeSubstitution">
+                {{ t('matchDetail.cancel') }}
+              </button>
+              <button type="button" class="btn-accent flex-1" :disabled="!selectedSubstituteId || loadingSubstitutes || savingSubstitution"
+                @click="confirmSubstitution">
+                {{ savingSubstitution ? t('matchDetail.substituting') : t('matchDetail.confirmSubstitution') }}
+              </button>
+            </div>
+          </div>
+        </section>
       </div>
     </template>
   </div>
