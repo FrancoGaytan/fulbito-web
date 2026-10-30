@@ -9,6 +9,9 @@ const _post = http as any
 
 // Mock listByGroup
 _get._get.mockImplementation(async (path: string) => {
+  if (path === '/matches/m1') {
+    return { _id: 'm1', groupId: 'g1', participants: ['p1', 'p2'] }
+  }
   if (path.startsWith('/matches/group/')) {
     return {
       matches: [
@@ -39,6 +42,12 @@ describe('matches.service', () => {
     const resp = await matches.listByGroup('g1' as any)
     expect(resp.matches).toHaveLength(1)
     expect(resp.meta.canCreate).toBe(true)
+  })
+
+  it('getMatch fetches a match by id', async () => {
+    const m = await matches.getMatch('m1' as any)
+    expect(_get._get).toHaveBeenCalledWith('/matches/m1')
+    expect(m._id).toBe('m1')
   })
 
   it('create posts correct payload', async () => {

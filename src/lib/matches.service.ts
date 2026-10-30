@@ -11,6 +11,13 @@ export const listByGroup = (groupId: UUID, signal?: AbortSignal) =>
   _get<MatchesGroupResponse>(`/matches/group/${groupId}`, signal);
 
 /**
+ * Fetch a match by id for the current group member.
+ * @param id Match id
+ * @returns Match
+ */
+export const getMatch = (id: UUID) => _get<Match>(`/matches/${id}`);
+
+/**
  * Create a new match for a group.
  * @param groupId Group id owning the match
  * @param participants Array of player ids initially signed
