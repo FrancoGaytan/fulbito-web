@@ -8,6 +8,7 @@ import type { Match, UUID } from '../types';
 import {
   createDefaultFormation,
   getHorizontalPositions,
+  getTeamLinePositions,
   type FormationCounts,
   type FormationRole,
 } from '../utils/formation';
@@ -73,10 +74,7 @@ const roleControls: { role: FormationRole; label: string; short: string }[] = [
 
 function slotsForTeam(team: TeamKey): FormationSlot[] {
   const counts = formations.value[team];
-  const sideY: Record<TeamKey, Record<FormationRole, number>> = {
-    A: { goalkeeper: 91, defenders: 75, midfielders: 59, forwards: 43 },
-    B: { goalkeeper: 9, defenders: 25, midfielders: 41, forwards: 57 },
-  };
+  const sideY = getTeamLinePositions(team);
 
   return roleControls.flatMap(({ role, label, short }) =>
     Array.from({ length: counts[role] }, (_, index) => ({
