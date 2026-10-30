@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router'
 import MatchesPage from '../views/MatchesPage.vue'
 import CreateMatchPage from '../views/CreateMatchPage.vue'
 import MatchDetailPage from '../views/MatchDetailPage.vue'
+import MatchFormationPage from '../views/MatchFormationPage.vue'
 import GroupsPage from '../views/GroupsPage.vue'
 import PlayersPage from '../views/PlayersPage.vue'
 import PlayerDetailsPage from '../views/PlayerDetailsPage.vue'
@@ -20,6 +21,7 @@ const routes = [
   { path: '/', name: 'matches', component: MatchesPage, meta: { requiresAuth: true, requiresSpace: true } },
   { path: '/matches/new', name: 'create-match', component: CreateMatchPage, meta: { requiresAuth: true, requiresSpace: true } },
   { path: '/match/:id', name: 'match-detail', component: MatchDetailPage, props: true, meta: { requiresAuth: true, requiresSpace: true } },
+  { path: '/matches/:id/formation', name: 'match-formation', component: MatchFormationPage, props: true, meta: { requiresAuth: true, requiresSpace: true } },
   { path: '/groups', name: 'groups', component: GroupsPage, meta: { requiresAuth: true, requiresSpace: true } },
   { path: '/players', name: 'players', component: PlayersPage, meta: { requiresAuth: true, requiresSpace: true } },
   { path: '/players/:id', name: 'player-detail', component: PlayerDetailsPage, props: true, meta: { requiresAuth: true, requiresSpace: true } },

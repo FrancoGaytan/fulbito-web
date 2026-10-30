@@ -375,6 +375,17 @@ async function applyRatingsNow() {
       <div class="flex items-center gap-3 mb-4">
         <h1 class="text-2xl font-bold text-white">{{ t('matchDetail.title') }}</h1>
         <div class="ml-auto flex items-center gap-2">
+          <button v-if="hasTeams" type="button"
+            class="btn-outline !w-10 !h-10 !p-0 flex items-center justify-center"
+            :aria-label="t('matchDetail.formation')" :title="t('matchDetail.formation')"
+            @click="router.push({ name: 'match-formation', params: { id: current._id } })">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+              stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5" aria-hidden="true">
+              <path d="M5 3.5h14a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2Z" />
+              <path d="M3 12h18M8 3.5v4a4 4 0 0 0 8 0v-4M8 20.5v-4a4 4 0 0 1 8 0v4" />
+              <circle cx="12" cy="12" r="1.3" />
+            </svg>
+          </button>
           <button v-if="current.canEdit && hasTeams && !isFinalized && !ratingApplied"
             type="button" class="btn-outline !w-10 !h-10 !p-0 flex items-center justify-center"
             :class="substitutionMode ? '!border-accent !text-accent bg-accent/10' : ''"
