@@ -128,6 +128,11 @@ export interface Match {
   myVotes?: UUID[];
 }
 
+export interface MatchSubstitution {
+  outgoingPlayerId: UUID;
+  incomingPlayerId: UUID;
+}
+
 // Health
 export interface Health {
   ok: boolean;
