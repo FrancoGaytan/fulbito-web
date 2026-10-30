@@ -7,6 +7,14 @@ export interface FormationCounts {
   forwards: number;
 }
 
+export function getFormationCounts(
+  formations: Partial<Record<'A' | 'B', FormationCounts>> | undefined,
+  team: 'A' | 'B',
+  playerCount: number,
+): FormationCounts {
+  return formations?.[team] ?? createDefaultFormation(playerCount);
+}
+
 export function getTeamLinePositions(team: 'A' | 'B'): Record<FormationRole, number> {
   return team === 'A'
     ? { goalkeeper: 91, defenders: 79, midfielders: 67, forwards: 55 }

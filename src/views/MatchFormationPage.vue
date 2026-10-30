@@ -7,6 +7,7 @@ import { usePlayers } from '../stores/players';
 import type { Match, UUID } from '../types';
 import {
   createDefaultFormation,
+  getFormationCounts,
   getHorizontalPositions,
   getTeamLinePositions,
   type FormationCounts,
@@ -37,6 +38,7 @@ const playerStore = usePlayers();
 const match = ref<Match | null>(null);
 const loading = ref(true);
 const error = ref('');
+const loadWarning = ref('');
 const formations = ref<Record<TeamKey, FormationCounts>>({
   A: createDefaultFormation(0),
   B: createDefaultFormation(0),
@@ -72,8 +74,12 @@ const roleControls: { role: FormationRole; label: string; short: string }[] = [
   { role: 'forwards', label: t('matchFormation.forwards'), short: t('matchFormation.forwardShort') },
 ];
 
+function formationFor(team: TeamKey): FormationCounts {
+  return getFormationCounts(formations.value, team, rosters.value[team].length);
+}
+
 function slotsForTeam(team: TeamKey): FormationSlot[] {
-  const counts = formations.value[team];
+  const counts = formationFor(team);
   const sideY = getTeamLinePositions(team);
 
   return roleControls.flatMap(({ role, label, short }) =>
@@ -154,7 +160,7 @@ function onSlotDrop(event: DragEvent, slot: FormationSlot) {
 }
 
 function changeRoleCount(team: TeamKey, role: FormationRole, delta: number) {
-  const current = formations.value[team];
+  const current = formationFor(team);
   const nextCount = current[role] + delta;
   const total = Object.values(current).reduce((sum, count) => sum + count, 0);
   const teamSize = rosters.value[team].length;
@@ -202,11 +208,15 @@ async function loadMatch() {
 
   loading.value = true;
   error.value = '';
+  loadWarning.value = '';
   try {
-    const [loadedMatch] = await Promise.all([
+    const [matchResult, playersResult] = await Promise.allSettled([
       matchesApi.getMatch(matchId),
       playerStore.fetch(),
     ]);
+    if (matchResult.status === 'rejected') throw matchResult.reason;
+
+    const loadedMatch = matchResult.value;
     match.value = loadedMatch;
     formations.value = {
       A: createDefaultFormation(loadedMatch.teams?.[0]?.players.length ?? 0),
@@ -214,6 +224,10 @@ async function loadMatch() {
     };
     assignments.value = {};
     selectedPlayer.value = null;
+    if (playersResult.status === 'rejected') {
+      console.warn('No se pudieron cargar los nombres de los jugadores', playersResult.reason);
+      loadWarning.value = t('matchFormation.playersLoadError');
+    }
   } catch (loadError: unknown) {
     error.value = loadError instanceof Error ? loadError.message : t('matchFormation.loadError');
   } finally {
@@ -257,6 +271,9 @@ watch(() => route.params.id, loadMatch, { immediate: true });
     </div>
 
     <template v-else>
+      <p v-if="loadWarning" role="status" class="rounded-xl border border-amber-400/20 bg-amber-400/10 px-4 py-3 text-sm text-amber-200">
+        {{ loadWarning }}
+      </p>
       <div class="grid items-start gap-4 xl:grid-cols-[minmax(210px,1fr)_minmax(290px,410px)_minmax(210px,1fr)]">
         <section v-for="team in (['A', 'B'] as const)" :key="team"
           class="card order-2 space-y-4 p-4 xl:order-none"
@@ -283,15 +300,15 @@ watch(() => route.params.id, loadMatch, { immediate: true });
               <div class="flex items-center justify-between">
                 <button type="button" class="flex h-7 w-7 items-center justify-center rounded-lg bg-dark-600 text-gray-300 transition hover:bg-dark-500 disabled:opacity-30"
                   :aria-label="`Quitar ${control.label}`"
-                  :disabled="formations[team][control.role] === 0"
+                  :disabled="formationFor(team)[control.role] === 0"
                   @click="changeRoleCount(team, control.role, -1)">−</button>
                 <span class="min-w-5 text-center text-sm font-bold text-white">
-                  {{ formations[team][control.role] }}
+                  {{ formationFor(team)[control.role] }}
                 </span>
                 <button type="button" class="flex h-7 w-7 items-center justify-center rounded-lg bg-dark-600 text-gray-300 transition hover:bg-dark-500 disabled:opacity-30"
                   :aria-label="`Agregar ${control.label}`"
-                  :disabled="(control.role === 'goalkeeper' && formations[team].goalkeeper === 1) ||
-                    Object.values(formations[team]).reduce((sum, count) => sum + count, 0) >= rosters[team].length"
+                  :disabled="(control.role === 'goalkeeper' && formationFor(team).goalkeeper === 1) ||
+                    Object.values(formationFor(team)).reduce((sum, count) => sum + count, 0) >= rosters[team].length"
                   @click="changeRoleCount(team, control.role, 1)">+</button>
               </div>
             </div>
